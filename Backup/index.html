@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Recipe App</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  </head>
+  <body data-theme="light">
+    <div id="auth-section" class="auth-section">
+      <div class="auth-container">
+        <h2><i class="fa-solid fa-user"></i> Login / Register</h2>
+        <form id="auth-form">
+          <div>
+            <label for="username">Username:</label>
+            <input type="text" id="username" required />
+          </div>
+          <div>
+            <label for="password">Password:</label>
+            <input type="password" id="password" required />
+          </div>
+          <button type="submit" id="login-btn" class="btn btn-primary">
+            <i class="fa-solid fa-sign-in-alt"></i> Login
+          </button>
+          <button type="button" id="register-btn" class="btn btn-secondary">
+            <i class="fa-solid fa-user-plus"></i> Register
+          </button>
+        </form>
+        <p id="auth-error" class="error-message hidden"></p>
+      </div>
+    </div>
+
+    <div class="container" id="main-app" style="display: none">
+      <header>
+        <div class="header-top">
+          <h1><i class="fa-solid fa-book-open"></i> My Recipe Book</h1>
+          <button id="logout-btn" class="btn btn-danger" aria-label="Logout">
+            <i class="fa-solid fa-sign-out-alt"></i> Logout
+          </button>
+        </div>
+        <div class="theme-switch-wrapper">
+          <label class="theme-switch" for="theme-checkbox">
+            <input type="checkbox" id="theme-checkbox" />
+            <div class="slider round"></div>
+          </label>
+          <span class="theme-label">
+            <i class="fa-solid fa-sun"></i><i class="fa-solid fa-moon"></i>
+            <span class="mode-text">Light Mode</span>
+          </span>
+        </div>
+        <div class="controls">
+          <div class="search-bar">
+            <input
+              type="text"
+              id="search-input"
+              placeholder="Search recipes..."
+              aria-label="Search recipes"
+            />
+            <button
+              id="filter-btn"
+              class="btn btn-neutral"
+              aria-label="Toggle Filters"
+            >
+              <i class="fa-solid fa-filter"></i> Filters
+            </button>
+          </div>
+          <button
+            id="add-recipe-btn"
+            class="btn btn-primary"
+            aria-label="Add New Recipe"
+          >
+            <i class="fa-solid fa-plus"></i> Add New Recipe
+          </button>
+        </div>
+        <div id="filters-section" class="filters-section hidden">
+          <h3><i class="fa-solid fa-filter"></i> Filters</h3>
+          <div class="filters-container">
+            <div class="filter-group">
+              <label for="category-filter">Category:</label>
+              <select id="category-filter" aria-label="Filter by category">
+                <option value="">All Categories</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="dietary-filter">Dietary Type:</label>
+              <select id="dietary-filter" aria-label="Filter by dietary type">
+                <option value="">All Dietary Types</option>
+                <option value="Gluten-Free">Gluten-Free</option>
+                <option value="Vegan">Vegan</option>
+                <option value="Vegetarian">Vegetarian</option>
+                <option value="Dairy-Free">Dairy-Free</option>
+                <option value="Nut-Free">Nut-Free</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="prep-time-filter">Max Prep Time (min):</label>
+              <input
+                type="number"
+                id="prep-time-filter"
+                min="0"
+                aria-label="Maximum preparation time"
+              />
+            </div>
+            <div class="filter-group">
+              <input
+                type="checkbox"
+                id="favorites-filter"
+                aria-label="Favorites Only"
+              />
+              <label for="favorites-filter">Favorites Only</label>
+            </div>
+            <button
+              class="btn btn-filter-apply"
+              id="apply-filters-btn"
+              aria-label="Apply Filters"
+            >
+              <i class="fa-solid fa-check"></i> Apply Filters
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <div id="loading-spinner" class="loading-spinner hidden">
+          <i class="fa-solid fa-spinner fa-spin"></i> Loading...
+        </div>
+
+        <section id="recipe-list-section">
+          <h2><i class="fa-solid fa-list-ul"></i> Recipes</h2>
+          <ul id="recipe-list"></ul>
+        </section>
+
+        <section id="recipe-details-section" class="hidden">
+          <button
+            id="back-btn"
+            class="btn btn-neutral"
+            aria-label="Back to List"
+          >
+            <i class="fa-solid fa-arrow-left"></i> Back to List
+          </button>
+          <article class="recipe-header">
+            <h2 id="details-title"></h2>
+            <div class="recipe-actions">
+              <button
+                id="favorite-btn"
+                class="btn btn-secondary favorite-btn"
+                aria-label="Favorite"
+              >
+                <i class="fa-regular fa-heart"></i> Favorite
+              </button>
+              <button
+                id="share-btn"
+                class="btn btn-secondary"
+                aria-label="Share"
+              >
+                <i class="fa-solid fa-share-alt"></i> Share
+              </button>
+            </div>
+          </article>
+          <p id="details-description"></p>
+          <img
+            id="details-image"
+            src=""
+            alt="Recipe Image"
+            class="recipe-image hidden"
+          />
+          <div id="time-info">
+            <span>
+              <span class="label">Prep Time:</span>
+              <span class="value" id="prep-time">N/A</span>
+            </span>
+            <span>
+              <span class="label">Cook Time:</span>
+              <span class="value" id="cook-time">N/A</span>
+            </span>
+            <span>
+              <span class="label">Total Time:</span>
+              <span class="value" id="total-time">N/A</span>
+            </span>
+            <span>
+              <span class="label">Servings:</span>
+              <span class="value" id="servings-info"></span>
+            </span>
+          </div>
+          <div class="serving-controls">
+            <label for="serving-size-select">
+              <i class="fa-solid fa-users"></i> Adjust Servings:
+            </label>
+            <select
+              id="serving-size-select"
+              aria-label="Adjust servings"
+            ></select>
+            <span id="base-serving-info"></span>
+          </div>
+          <div class="category-tags">
+            <h3>
+              <i class="fa-solid fa-tags"></i> Categories & Dietary Types:
+            </h3>
+            <div id="details-categories"></div>
+          </div>
+          <h3><i class="fa-solid fa-carrot"></i> Ingredients:</h3>
+          <button id="add-to-shopping-list-btn" class="btn btn-primary">
+            <i class="fa-solid fa-shopping-cart"></i> Add to Shopping List
+          </button>
+          <ul id="details-ingredients"></ul>
+          <h3><i class="fa-solid fa-scroll"></i> Instructions:</h3>
+          <p id="details-instructions"></p>
+          <div id="nutrition-info-section">
+            <h3>
+              <i class="fa-solid fa-heart-pulse"></i> Nutritional Information
+              <small>(approx. per serving)</small>
+            </h3>
+            <ul id="details-nutrition">
+              <li id="nutrition-calories">Calories: <span>N/A</span></li>
+              <li id="nutrition-protein">Protein: <span>N/A</span></li>
+              <li id="nutrition-carbs">Carbs: <span>N/A</span></li>
+              <li id="nutrition-fat">Fat: <span>N/A</span></li>
+            </ul>
+          </div>
+          <div class="comments-section">
+            <h3><i class="fa-solid fa-comments"></i> Comments:</h3>
+            <ul id="comments-list"></ul>
+            <textarea
+              id="new-comment"
+              placeholder="Add a comment..."
+              rows="3"
+              aria-label="Add a comment"
+            ></textarea>
+            <button id="add-comment-btn" class="btn btn-primary">
+              <i class="fa-solid fa-comment-dots"></i> Post Comment
+            </button>
+          </div>
+          <div class="details-buttons">
+            <div class="primary-actions">
+              <button
+                id="edit-recipe-btn"
+                class="btn btn-primary"
+                aria-label="Edit Recipe"
+              >
+                <i class="fa-solid fa-pencil"></i> Edit Recipe
+              </button>
+              <button
+                id="download-pdf-btn"
+                class="btn btn-primary"
+                aria-label="Download PDF"
+              >
+                <i class="fa-solid fa-file-pdf"></i> Download PDF
+              </button>
+              <button
+                id="add-to-meal-plan-btn"
+                class="btn btn-primary"
+                aria-label="Add to Meal Plan"
+              >
+                <i class="fa-solid fa-calendar-plus"></i> Add to Meal Plan
+              </button>
+            </div>
+            <div class="secondary-actions">
+              <button
+                id="delete-recipe-btn"
+                class="btn btn-danger"
+                aria-label="Delete Recipe"
+              >
+                <i class="fa-solid fa-trash-can"></i> Delete Recipe
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section id="add-recipe-section" class="hidden">
+          <h2 id="form-title">
+            <i class="fa-solid fa-pen-to-square"></i> Add New Recipe
+          </h2>
+          <form id="add-recipe-form">
+            <button
+              type="button"
+              id="cancel-add-btn"
+              class="btn btn-neutral cancel-button"
+              aria-label="Cancel"
+            >
+              <i class="fa-solid fa-xmark"></i> Cancel
+            </button>
+            <div>
+              <label for="new-recipe-name">Recipe Name:</label>
+              <input
+                type="text"
+                id="new-recipe-name"
+                required
+                aria-required="true"
+              />
+            </div>
+            <div>
+              <label for="new-recipe-description">Description:</label>
+              <textarea
+                id="new-recipe-description"
+                rows="3"
+                aria-label="Recipe description"
+              ></textarea>
+            </div>
+            <div>
+              <label for="new-recipe-categories"
+                >Categories (comma-separated):</label
+              >
+              <input
+                type="text"
+                id="new-recipe-categories"
+                placeholder="e.g., Breakfast, Dessert"
+                aria-label="Recipe categories"
+              />
+            </div>
+            <div>
+              <label for="new-recipe-dietary">Dietary Type:</label>
+              <select id="new-recipe-dietary" aria-label="Dietary type">
+                <option value="">None</option>
+                <option value="Gluten-Free">Gluten-Free</option>
+                <option value="Vegan">Vegan</option>
+                <option value="Vegetarian">Vegetarian</option>
+                <option value="Dairy-Free">Dairy-Free</option>
+                <option value="Nut-Free">Nut-Free</option>
+              </select>
+            </div>
+            <div>
+              <label for="new-recipe-prep-time"
+                >Prep Time (e.g., 15 min):</label
+              >
+              <input
+                type="text"
+                id="new-recipe-prep-time"
+                aria-label="Preparation time"
+              />
+            </div>
+            <div>
+              <label for="new-recipe-cook-time"
+                >Cook Time (e.g., 30 min):</label
+              >
+              <input
+                type="text"
+                id="new-recipe-cook-time"
+                aria-label="Cooking time"
+              />
+            </div>
+            <div>
+              <label for="new-recipe-total-time"
+                >Total Time (e.g., 45 min):</label
+              >
+              <input
+                type="text"
+                id="new-recipe-total-time"
+                aria-label="Total time"
+              />
+            </div>
+            <div>
+              <label for="new-recipe-servings">Recipe makes (servings):</label>
+              <input
+                type="number"
+                id="new-recipe-servings"
+                min="1"
+                step="1"
+                value="1"
+                required
+                aria-required="true"
+                aria-label="Number of servings"
+              />
+            </div>
+            <div>
+              <label for="new-recipe-ingredients">
+                Ingredients (one per line: quantity unit name):
+              </label>
+              <textarea
+                id="new-recipe-ingredients"
+                rows="6"
+                required
+                placeholder="Example:\n1.5 cup Flour\n1 large Egg\n1/2 tsp Vanilla Extract\npinch Salt"
+                aria-required="true"
+                aria-label="Recipe ingredients"
+              ></textarea>
+            </div>
+            <div>
+              <label for="new-recipe-instructions">Instructions:</label>
+              <textarea
+                id="new-recipe-instructions"
+                rows="6"
+                required
+                aria-required="true"
+                aria-label="Recipe instructions"
+              ></textarea>
+            </div>
+            <fieldset class="nutrition-input-group">
+              <legend>
+                <i class="fa-solid fa-heart-pulse"></i> Nutritional Information
+                (optional, per serving)
+              </legend>
+              <div>
+                <label for="new-recipe-calories">Calories:</label>
+                <input
+                  type="text"
+                  id="new-recipe-calories"
+                  placeholder="e.g., 200 kcal"
+                  aria-label="Calories per serving"
+                />
+              </div>
+              <div>
+                <label for="new-recipe-protein">Protein:</label>
+                <input
+                  type="text"
+                  id="new-recipe-protein"
+                  placeholder="e.g., 10g"
+                  aria-label="Protein per serving"
+                />
+              </div>
+              <div>
+                <label for="new-recipe-carbs">Carbs:</label>
+                <input
+                  type="text"
+                  id="new-recipe-carbs"
+                  placeholder="e.g., 30g"
+                  aria-label="Carbs per serving"
+                />
+              </div>
+              <div>
+                <label for="new-recipe-fat">Fat:</label>
+                <input
+                  type="text"
+                  id="new-recipe-fat"
+                  placeholder="e.g., 5g"
+                  aria-label="Fat per serving"
+                />
+              </div>
+            </fieldset>
+            <div class="image-input-area">
+              <label for="new-recipe-image"
+                >Upload Image (or use camera):</label
+              >
+              <div class="image-buttons">
+                <input
+                  type="file"
+                  id="new-recipe-image"
+                  accept="image/*"
+                  aria-label="Upload recipe image"
+                  class="btn btn-neutral"
+                />
+                <button
+                  type="button"
+                  id="open-camera-btn"
+                  class="btn btn-neutral"
+                  aria-label="Open Camera"
+                >
+                  <i class="fa-solid fa-camera"></i> Open Camera
+                </button>
+              </div>
+              <img
+                id="image-preview"
+                src=""
+                alt="Image Preview"
+                class="image-preview hidden"
+              />
+              <p id="image-capture-status" class="hidden">
+                <i class="fa-solid fa-check"></i> Image captured successfully!
+              </p>
+            </div>
+            <button type="submit" id="save-update-btn" class="btn btn-primary">
+              <i class="fa-solid fa-save"></i> Save Recipe
+            </button>
+          </form>
+        </section>
+
+        <section id="shopping-list-section" class="hidden">
+          <h2><i class="fa-solid fa-shopping-cart"></i> Shopping List</h2>
+          <button
+            id="clear-shopping-list-btn"
+            class="btn btn-danger"
+            aria-label="Clear Shopping List"
+          >
+            <i class="fa-solid fa-trash-can"></i> Clear List
+          </button>
+          <ul id="shopping-list"></ul>
+        </section>
+
+        <section id="meal-plan-section" class="hidden">
+          <h2><i class="fa-solid fa-calendar-alt"></i> Meal Plan</h2>
+          <button
+            id="clear-meal-plan-btn"
+            class="btn btn-danger"
+            aria-label="Clear Meal Plan"
+          >
+            <i class="fa-solid fa-trash-can"></i> Clear Meal Plan
+          </button>
+          <div id="meal-plan-calendar" class="meal-plan-calendar">
+            <div class="day-meal-pair">
+              <div class="day-header">Mon</div>
+              <div class="day-slot">
+                <p>No meal planned</p>
+                <button class="btn btn-danger" aria-label="Remove meal">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+            <div class="day-meal-pair">
+              <div class="day-header">Tue</div>
+              <div class="day-slot">
+                <p>No meal planned</p>
+                <button class="btn btn-danger" aria-label="Remove meal">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+            <div class="day-meal-pair">
+              <div class="day-header">Wed</div>
+              <div class="day-slot">
+                <p>No meal planned</p>
+                <button class="btn btn-danger" aria-label="Remove meal">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+            <div class="day-meal-pair">
+              <div class="day-header">Thu</div>
+              <div class="day-slot">
+                <p>No meal planned</p>
+                <button class="btn btn-danger" aria-label="Remove meal">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+            <div class="day-meal-pair">
+              <div class="day-header">Fri</div>
+              <div class="day-slot">
+                <p>No meal planned</p>
+                <button class="btn btn-danger" aria-label="Remove meal">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+            <div class="day-meal-pair">
+              <div class="day-header">Sat</div>
+              <div class="day-slot">
+                <p>No meal planned</p>
+                <button class="btn btn-danger" aria-label="Remove meal">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+            <div class="day-meal-pair">
+              <div class="day-header">Sun</div>
+              <div class="day-slot">
+                <p>No meal planned</p>
+                <button class="btn btn-danger" aria-label="Remove meal">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div id="camera-modal" class="modal hidden">
+          <div class="modal-content">
+            <button
+              id="close-camera-btn"
+              class="btn btn-neutral close-btn"
+              aria-label="Close Camera"
+            >
+              <i class="fa-solid fa-times"></i>
+            </button>
+            <button
+              id="switch-camera-btn"
+              class="btn btn-neutral switch-btn"
+              aria-label="Switch Camera"
+            >
+              <i class="fa-solid fa-camera-rotate"></i>
+            </button>
+            <video id="camera-video" autoplay playsinline></video>
+            <canvas id="camera-canvas" class="hidden"></canvas>
+            <button
+              id="capture-photo-btn"
+              class="btn btn-primary"
+              aria-label="Capture Photo"
+            >
+              <i class="fa-solid fa-camera"></i> Capture Photo
+            </button>
+            <p id="camera-error" class="error-message hidden"></p>
+          </div>
+        </div>
+      </main>
+
+      <nav class="bottom-nav">
+        <button id="recipes-nav-btn" class="active" aria-label="Recipes">
+          <i class="fa-solid fa-book-open"></i> Recipes
+        </button>
+        <button id="shopping-list-nav-btn" aria-label="Shopping List">
+          <i class="fa-solid fa-shopping-cart"></i> Shopping List
+        </button>
+        <button id="meal-plan-nav-btn" aria-label="Meal Plan">
+          <i class="fa-solid fa-calendar-alt"></i> Meal Plan
+        </button>
+      </nav>
+    </div>
+
+    <footer>
+      <p>
+        &copy; 2025 My Recipe App. All rights reserved. | Developed by
+        <a
+          href="/cdn-cgi/l/email-protection#b4c7c1c4c4dbc6c0f4d6d5c6c6c0d1d7dcc7dbd8c1c0dddbdac79ad7dbd9"
+          >Barrtech Solutions</a
+        >
+      </p>
+      <button id="contact-btn" class="btn btn-primary" aria-label="Contact Us">
+        <i class="fa-solid fa-envelope"></i> Contact Us
+      </button>
+    </footer>
+
+    <script
+      data-cfasync="false"
+      src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"
+    ></script>
+    <script src="script.js"></script>
+    <script>
+      (function () {
+        function c() {
+          var b = a.contentDocument || a.contentWindow.document;
+          if (b) {
+            var d = b.createElement("script");
+            d.innerHTML =
+              "window.__CF$cv$params={r:'92d4f5e2092d456a',t:'MTc0NDE0ODgxOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+            b.getElementsByTagName("head")[0].appendChild(d);
+          }
+        }
+        if (document.body) {
+          var a = document.createElement("iframe");
+          a.height = 1;
+          a.width = 1;
+          a.style.position = "absolute";
+          a.style.top = 0;
+          a.style.left = 0;
+          a.style.border = "none";
+          a.style.visibility = "hidden";
+          document.body.appendChild(a);
+          if ("loading" !== document.readyState) c();
+          else if (window.addEventListener)
+            document.addEventListener("DOMContentLoaded", c);
+          else {
+            var e = document.onreadystatechange || function () {};
+            document.onreadystatechange = function (b) {
+              e(b);
+              "loading" !== document.readyState &&
+                ((document.onreadystatechange = e), c());
+            };
+          }
+        }
+      })();
+    </script>
+  </body>
+</html>
