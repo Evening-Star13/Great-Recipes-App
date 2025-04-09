@@ -151,7 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "Dairy-Free",
     "Nut-Free",
   ]);
-  let imageObjectURLs = new Set(); // Track all active image URLs
+  let imageObjectURLs = new Set();
   let isFrontCamera = false;
   let isEditing = false;
 
@@ -194,6 +194,39 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function deleteRecipeFromIndexedDB(id) {
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([RECIPE_STORE], "readwrite");
+      const store = transaction.objectStore(RECIPE_STORE);
+      const request = store.delete(id);
+      request.onsuccess = () => resolve();
+      request.onerror = (event) =>
+        reject("Error deleting recipe from IndexedDB: " + event.target.error);
+    });
+  }
+
+  function saveRecipesToIndexedDB() {
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([RECIPE_STORE], "readwrite");
+      const store = transaction.objectStore(RECIPE_STORE);
+      recipes.forEach((recipe) => store.put(recipe));
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = (event) =>
+        reject("Error saving recipes to IndexedDB: " + event.target.error);
+    });
+  }
+
+  function loadRecipesFromIndexedDB() {
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([RECIPE_STORE], "readonly");
+      const store = transaction.objectStore(RECIPE_STORE);
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = (event) =>
+        reject("Error loading recipes from IndexedDB: " + event.target.error);
+    });
+  }
+
   // --- Helper Functions ---
   function gcd(a, b) {
     a = Math.abs(Math.round(a));
@@ -205,7 +238,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function parseQuantity(qtyString) {
     if (!qtyString || typeof qtyString !== "string") return null;
     qtyString = qtyString.trim();
-
     if (qtyString.includes(" ") && qtyString.includes("/")) {
       const mixedParts = qtyString.split(" ");
       if (mixedParts.length === 2) {
@@ -222,7 +254,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
     }
-
     if (qtyString.includes("/")) {
       const parts = qtyString.split("/");
       if (
@@ -231,12 +262,9 @@ document.addEventListener("DOMContentLoaded", () => {
         !isNaN(parts[1]) &&
         parts[1] !== "0"
       ) {
-        const numerator = Number(parts[0]);
-        const denominator = Number(parts[1]);
-        return numerator / denominator;
+        return Number(parts[0]) / Number(parts[1]);
       }
     }
-
     const numeric = parseFloat(qtyString);
     return isNaN(numeric) ? null : numeric;
   }
@@ -246,18 +274,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const whole = Math.floor(num);
     const fractional = num - whole;
     if (fractional === 0) return `${whole}`;
-
     const precision = 100;
     const numerator = Math.round(fractional * precision);
     const denominator = precision;
     const divisor = gcd(numerator, denominator);
     const simplifiedNum = numerator / divisor;
     const simplifiedDen = denominator / divisor;
-
-    if (whole === 0) {
-      return `${simplifiedNum}/${simplifiedDen}`;
-    }
-    return `${whole} ${simplifiedNum}/${simplifiedDen}`;
+    return whole === 0
+      ? `${simplifiedNum}/${simplifiedDen}`
+      : `${whole} ${simplifiedNum}/${simplifiedDen}`;
   }
 
   function parseTime(timeStr) {
@@ -297,28 +322,6 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error(`Error loading from localStorage (${key}):`, e);
       return null;
     }
-  }
-
-  function saveRecipesToIndexedDB() {
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction([RECIPE_STORE], "readwrite");
-      const store = transaction.objectStore(RECIPE_STORE);
-      recipes.forEach((recipe) => store.put(recipe));
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = (event) =>
-        reject("Error saving recipes to IndexedDB: " + event.target.error);
-    });
-  }
-
-  function loadRecipesFromIndexedDB() {
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction([RECIPE_STORE], "readonly");
-      const store = transaction.objectStore(RECIPE_STORE);
-      const request = store.getAll();
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = (event) =>
-        reject("Error loading recipes from IndexedDB: " + event.target.error);
-    });
   }
 
   function revokeImageObjectURLs(exclude = []) {
@@ -395,24 +398,22 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       await initIndexedDB();
       const indexedRecipes = await loadRecipesFromIndexedDB();
-      recipes = indexedRecipes.length
-        ? indexedRecipes
-        : loadFromLocalStorage(RECIPES_STORAGE_KEY) || [];
-      // Always sync localStorage with IndexedDB to prevent stale data
-      saveToLocalStorage(RECIPES_STORAGE_KEY, recipes);
+      recipes = indexedRecipes || [];
+      if (!recipes.length) {
+        recipes = loadFromLocalStorage(RECIPES_STORAGE_KEY) || [];
+        if (recipes.length) await saveRecipesToIndexedDB();
+      }
       recipes.forEach((recipe) => {
         recipe.categories?.forEach((cat) => allCategories.add(cat));
         if (recipe.dietaryType) allDietaryTypes.add(recipe.dietaryType);
         if (recipe.image) imageObjectURLs.add(recipe.image);
       });
+      saveToLocalStorage(RECIPES_STORAGE_KEY, recipes);
       populateCategoryFilter();
       displayRecipes();
     } catch (e) {
-      console.error("Error loading recipes from IndexedDB:", e);
+      console.error("Error loading recipes:", e);
       recipes = loadFromLocalStorage(RECIPES_STORAGE_KEY) || [];
-      saveRecipesToIndexedDB().catch((err) =>
-        console.error("Failed to sync recipes to IndexedDB:", err)
-      );
       displayRecipes();
     } finally {
       loadingSpinner.classList.add("hidden");
@@ -471,25 +472,20 @@ document.addEventListener("DOMContentLoaded", () => {
           r.dietaryType?.toLowerCase().includes(searchTerm)
       );
     }
-
     if (selectedCategory) {
       filtered = filtered.filter((r) =>
         r.categories?.includes(selectedCategory)
       );
     }
-
     if (selectedDietary) {
       filtered = filtered.filter((r) => r.dietaryType === selectedDietary);
     }
-
     if (maxPrepTime) {
       filtered = filtered.filter((r) => parseTime(r.prepTime) <= maxPrepTime);
     }
-
     if (favoritesOnly && currentUser) {
       filtered = filtered.filter((r) => userData.favorites.includes(r.id));
     }
-
     displayRecipes(filtered);
   }
 
@@ -653,64 +649,67 @@ document.addEventListener("DOMContentLoaded", () => {
     recipe.createdBy = currentUser;
     recipes.push(recipe);
     if (recipe.image) imageObjectURLs.add(recipe.image);
-    saveRecipesToIndexedDB().catch((e) =>
-      console.error("Failed to save recipe to IndexedDB:", e)
-    );
-    saveToLocalStorage(RECIPES_STORAGE_KEY, recipes); // Sync localStorage
+    saveRecipesToIndexedDB()
+      .then(() => {
+        saveToLocalStorage(RECIPES_STORAGE_KEY, recipes);
+        console.log("Recipe added:", recipe);
+        displayRecipes();
+      })
+      .catch((e) => console.error("Failed to save recipe:", e));
     recipe.categories?.forEach((cat) => allCategories.add(cat));
     if (recipe.dietaryType) allDietaryTypes.add(recipe.dietaryType);
     populateCategoryFilter();
-    displayRecipes();
-    console.log("Recipe added:", recipe);
   }
 
   function updateRecipe(recipeId, updatedRecipe) {
     const index = recipes.findIndex((r) => r.id === recipeId);
-    if (index !== -1) {
-      updatedRecipe.id = recipeId;
-      updatedRecipe.createdBy = recipes[index].createdBy;
-      const oldImage = recipes[index].image;
-      recipes[index] = updatedRecipe;
-      if (updatedRecipe.image) imageObjectURLs.add(updatedRecipe.image);
-      saveRecipesToIndexedDB().catch((e) =>
-        console.error("Failed to update recipe in IndexedDB:", e)
-      );
-      saveToLocalStorage(RECIPES_STORAGE_KEY, recipes); // Sync localStorage
-      updatedRecipe.categories?.forEach((cat) => allCategories.add(cat));
-      if (updatedRecipe.dietaryType)
-        allDietaryTypes.add(updatedRecipe.dietaryType);
-      populateCategoryFilter();
-      showRecipeDetails(recipeId);
-      displayRecipes();
-      if (oldImage && oldImage !== updatedRecipe.image) {
-        revokeImageObjectURLs([updatedRecipe.image]);
-      }
-      console.log("Recipe updated:", updatedRecipe);
-    }
+    if (index === -1) return;
+    updatedRecipe.id = recipeId;
+    updatedRecipe.createdBy = recipes[index].createdBy;
+    const oldImage = recipes[index].image;
+    recipes[index] = updatedRecipe;
+    if (updatedRecipe.image) imageObjectURLs.add(updatedRecipe.image);
+    saveRecipesToIndexedDB()
+      .then(() => {
+        saveToLocalStorage(RECIPES_STORAGE_KEY, recipes);
+        console.log("Recipe updated:", updatedRecipe);
+        showRecipeDetails(recipeId);
+        displayRecipes();
+        if (oldImage && oldImage !== updatedRecipe.image) {
+          revokeImageObjectURLs([updatedRecipe.image]);
+        }
+      })
+      .catch((e) => console.error("Failed to update recipe:", e));
+    updatedRecipe.categories?.forEach((cat) => allCategories.add(cat));
+    if (updatedRecipe.dietaryType)
+      allDietaryTypes.add(updatedRecipe.dietaryType);
+    populateCategoryFilter();
   }
 
   function deleteRecipe(id) {
-    if (confirm("Are you sure you want to delete this recipe?")) {
-      const recipe = recipes.find((r) => r.id === id);
-      recipes = recipes.filter((r) => r.id !== id);
-      if (userData.favorites.includes(id)) {
-        userData.favorites = userData.favorites.filter((fid) => fid !== id);
-      }
-      delete userData.comments[id];
-      saveRecipesToIndexedDB()
-        .then(() => {
-          saveToLocalStorage(RECIPES_STORAGE_KEY, recipes); // Sync localStorage after deletion
-          console.log("Recipe deleted and storage synced:", id);
-        })
-        .catch((e) =>
-          console.error("Failed to delete recipe from IndexedDB:", e)
-        );
-      saveToLocalStorage(`${USER_DATA_STORAGE_KEY}.${currentUser}`, userData);
-      recipeDetailsSection.classList.add("hidden");
-      recipeListSection.classList.remove("hidden");
-      displayRecipes();
-      if (recipe?.image) revokeImageObjectURLs([]);
+    if (!confirm("Are you sure you want to delete this recipe?")) return;
+    const recipe = recipes.find((r) => r.id === id);
+    if (!recipe) return;
+    recipes = recipes.filter((r) => r.id !== id);
+    if (userData.favorites.includes(id)) {
+      userData.favorites = userData.favorites.filter((fid) => fid !== id);
     }
+    delete userData.comments[id];
+    deleteRecipeFromIndexedDB(id)
+      .then(() => {
+        saveToLocalStorage(RECIPES_STORAGE_KEY, recipes);
+        saveToLocalStorage(`${USER_DATA_STORAGE_KEY}.${currentUser}`, userData);
+        console.log("Recipe deleted:", id);
+        recipeDetailsSection.classList.add("hidden");
+        recipeListSection.classList.remove("hidden");
+        displayRecipes();
+        if (recipe.image) revokeImageObjectURLs([]);
+      })
+      .catch((e) => {
+        console.error("Failed to delete recipe:", e);
+        recipes.push(recipe); // Rollback on failure
+        displayRecipes();
+      });
   }
 
   // --- PDF Generation ---
@@ -749,11 +748,10 @@ document.addEventListener("DOMContentLoaded", () => {
               })
           );
         const imgProps = doc.getImageProperties(imgData);
-        let imgWidth = imgProps.width * 0.75; // Convert px to pt (approx)
+        let imgWidth = imgProps.width * 0.75;
         let imgHeight = imgProps.height * 0.75;
         const aspectRatio = imgWidth / imgHeight;
 
-        // Enforce 300px (225pt) max dimensions
         if (
           imgWidth > MAX_PDF_IMAGE_SIZE_PTS ||
           imgHeight > MAX_PDF_IMAGE_SIZE_PTS
@@ -925,9 +923,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const adjustedQty =
         qty !== null ? formatQuantity(qty * factor) : ing.quantity;
       const item = `${adjustedQty} ${ing.unit || ""} ${ing.name}`.trim();
-      if (!shoppingListItems.includes(item)) {
-        shoppingListItems.push(item);
-      }
+      if (!shoppingListItems.includes(item)) shoppingListItems.push(item);
     });
     saveShoppingList();
     alert("Ingredients added to shopping list!");
@@ -1101,7 +1097,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   addRecipeForm.addEventListener("submit", (e) => {
     e.preventDefault();
-
     if (!newRecipeNameInput.value.trim()) {
       alert("Recipe name is required.");
       return;
@@ -1153,14 +1148,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (capturedImageBlob) {
       recipe.image = URL.createObjectURL(capturedImageBlob);
-      imageObjectURLs.add(recipe.image);
     } else if (newRecipeImageInput.files[0]) {
       if (newRecipeImageInput.files[0].size > MAX_IMAGE_SIZE) {
         alert("Image size exceeds 5MB limit.");
         return;
       }
       recipe.image = URL.createObjectURL(newRecipeImageInput.files[0]);
-      imageObjectURLs.add(recipe.image);
     } else if (isEditing && existingImageSrcForEdit) {
       recipe.image = existingImageSrcForEdit;
     }
@@ -1183,7 +1176,6 @@ document.addEventListener("DOMContentLoaded", () => {
   editRecipeBtn.addEventListener("click", () => {
     const recipe = recipes.find((r) => r.id === currentRecipeId);
     if (!recipe) return;
-
     isEditing = true;
     formTitle.textContent = "Edit Recipe";
     saveUpdateBtn.textContent = "Update Recipe";
