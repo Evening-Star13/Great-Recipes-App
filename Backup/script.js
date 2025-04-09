@@ -139,7 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentRecipeId = null;
   let currentCameraStream = null;
   let capturedImageBlob = null;
-  let existingImageSrcForEdit = null;
+  let existingImageBase64ForEdit = null; // Changed to store base64
   let shoppingListItems = [];
   let mealPlan = {};
   let userData = { favorites: [], comments: {} };
@@ -151,7 +151,6 @@ document.addEventListener("DOMContentLoaded", () => {
     "Dairy-Free",
     "Nut-Free",
   ]);
-  let imageObjectURLs = new Set();
   let isFrontCamera = false;
   let isEditing = false;
 
@@ -227,7 +226,28 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // --- Helper Functions ---
+  // --- Image Handling Helpers ---
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function base64ToBlob(base64) {
+    const byteString = atob(base64.split(",")[1]);
+    const mimeString = base64.split(",")[0].split(":")[1].split(";")[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([ab], { type: mimeString });
+  }
+
+  // --- General Helper Functions ---
   function gcd(a, b) {
     a = Math.abs(Math.round(a));
     b = Math.abs(Math.round(b));
@@ -324,19 +344,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function revokeImageObjectURLs(exclude = []) {
-    const activeURLs = new Set(recipes.map((r) => r.image).filter(Boolean));
-    activeURLs.add(detailsImage.src);
-    activeURLs.add(imagePreview.src);
-    exclude.forEach((url) => activeURLs.add(url));
-    imageObjectURLs.forEach((url) => {
-      if (!activeURLs.has(url)) {
-        URL.revokeObjectURL(url);
-        imageObjectURLs.delete(url);
-      }
-    });
-  }
-
   // --- Authentication Functions ---
   function showAuthError(message) {
     authError.textContent = message;
@@ -389,7 +396,6 @@ document.addEventListener("DOMContentLoaded", () => {
     mainApp.style.display = "none";
     usernameInput.value = "";
     passwordInput.value = "";
-    revokeImageObjectURLs();
   }
 
   // --- Recipe Management ---
@@ -403,10 +409,17 @@ document.addEventListener("DOMContentLoaded", () => {
         recipes = loadFromLocalStorage(RECIPES_STORAGE_KEY) || [];
         if (recipes.length) await saveRecipesToIndexedDB();
       }
+      // Regenerate image URLs from base64
+      recipes = recipes.map((recipe) => {
+        if (recipe.imageBase64) {
+          const blob = base64ToBlob(recipe.imageBase64);
+          recipe.image = URL.createObjectURL(blob);
+        }
+        return recipe;
+      });
       recipes.forEach((recipe) => {
         recipe.categories?.forEach((cat) => allCategories.add(cat));
         if (recipe.dietaryType) allDietaryTypes.add(recipe.dietaryType);
-        if (recipe.image) imageObjectURLs.add(recipe.image);
       });
       saveToLocalStorage(RECIPES_STORAGE_KEY, recipes);
       populateCategoryFilter();
@@ -531,7 +544,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (recipe.image) {
       detailsImage.src = recipe.image;
       detailsImage.classList.remove("hidden");
-      imageObjectURLs.add(recipe.image);
     } else {
       detailsImage.classList.add("hidden");
       detailsImage.src = "";
@@ -644,11 +656,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function addRecipe(recipe) {
+  async function addRecipe(recipe) {
     recipe.id = Date.now().toString();
     recipe.createdBy = currentUser;
+    if (recipe.imageBlob) {
+      recipe.imageBase64 = await blobToBase64(recipe.imageBlob);
+      recipe.image = URL.createObjectURL(recipe.imageBlob);
+      delete recipe.image_blob; // Clean up temporary field
+    }
     recipes.push(recipe);
-    if (recipe.image) imageObjectURLs.add(recipe.image);
     saveRecipesToIndexedDB()
       .then(() => {
         saveToLocalStorage(RECIPES_STORAGE_KEY, recipes);
@@ -661,23 +677,26 @@ document.addEventListener("DOMContentLoaded", () => {
     populateCategoryFilter();
   }
 
-  function updateRecipe(recipeId, updatedRecipe) {
+  async function updateRecipe(recipeId, updatedRecipe) {
     const index = recipes.findIndex((r) => r.id === recipeId);
     if (index === -1) return;
     updatedRecipe.id = recipeId;
     updatedRecipe.createdBy = recipes[index].createdBy;
-    const oldImage = recipes[index].image;
+    if (updatedRecipe.imageBlob) {
+      updatedRecipe.imageBase64 = await blobToBase64(updatedRecipe.imageBlob);
+      updatedRecipe.image = URL.createObjectURL(updatedRecipe.imageBlob);
+      delete updatedRecipe.imageBlob; // Clean up
+    } else if (recipes[index].imageBase64) {
+      updatedRecipe.imageBase64 = recipes[index].imageBase64;
+      updatedRecipe.image = recipes[index].image;
+    }
     recipes[index] = updatedRecipe;
-    if (updatedRecipe.image) imageObjectURLs.add(updatedRecipe.image);
     saveRecipesToIndexedDB()
       .then(() => {
         saveToLocalStorage(RECIPES_STORAGE_KEY, recipes);
         console.log("Recipe updated:", updatedRecipe);
         showRecipeDetails(recipeId);
         displayRecipes();
-        if (oldImage && oldImage !== updatedRecipe.image) {
-          revokeImageObjectURLs([updatedRecipe.image]);
-        }
       })
       .catch((e) => console.error("Failed to update recipe:", e));
     updatedRecipe.categories?.forEach((cat) => allCategories.add(cat));
@@ -703,7 +722,7 @@ document.addEventListener("DOMContentLoaded", () => {
         recipeDetailsSection.classList.add("hidden");
         recipeListSection.classList.remove("hidden");
         displayRecipes();
-        if (recipe.image) revokeImageObjectURLs([]);
+        if (recipe.image) URL.revokeObjectURL(recipe.image);
       })
       .catch((e) => {
         console.error("Failed to delete recipe:", e);
@@ -735,18 +754,9 @@ document.addEventListener("DOMContentLoaded", () => {
     doc.text(recipe.name, margin, y, { maxWidth });
     y += 10;
 
-    if (recipe.image) {
+    if (recipe.imageBase64) {
       try {
-        const imgData = await fetch(recipe.image)
-          .then((res) => res.blob())
-          .then(
-            (blob) =>
-              new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.readAsDataURL(blob);
-              })
-          );
+        const imgData = recipe.imageBase64;
         const imgProps = doc.getImageProperties(imgData);
         let imgWidth = imgProps.width * 0.75;
         let imgHeight = imgProps.height * 0.75;
@@ -1039,7 +1049,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const url = URL.createObjectURL(blob);
       imagePreview.src = url;
       imagePreview.classList.remove("hidden");
-      imageObjectURLs.add(url);
       imageCaptureStatus.classList.remove("hidden");
       closeCamera();
     }, "image/jpeg");
@@ -1078,7 +1087,7 @@ document.addEventListener("DOMContentLoaded", () => {
     imagePreview.src = "";
     imageCaptureStatus.classList.add("hidden");
     capturedImageBlob = null;
-    existingImageSrcForEdit = null;
+    existingImageBase64ForEdit = null;
     recipeListSection.classList.add("hidden");
     addRecipeSection.classList.remove("hidden");
   });
@@ -1086,16 +1095,15 @@ document.addEventListener("DOMContentLoaded", () => {
   backBtn.addEventListener("click", () => {
     recipeDetailsSection.classList.add("hidden");
     recipeListSection.classList.remove("hidden");
-    revokeImageObjectURLs([detailsImage.src]);
   });
 
   cancelAddBtn.addEventListener("click", () => {
     addRecipeSection.classList.add("hidden");
     recipeListSection.classList.remove("hidden");
-    revokeImageObjectURLs([]);
+    if (imagePreview.src) URL.revokeObjectURL(imagePreview.src);
   });
 
-  addRecipeForm.addEventListener("submit", (e) => {
+  addRecipeForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!newRecipeNameInput.value.trim()) {
       alert("Recipe name is required.");
@@ -1147,26 +1155,29 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     if (capturedImageBlob) {
-      recipe.image = URL.createObjectURL(capturedImageBlob);
+      recipe.imageBlob = capturedImageBlob;
     } else if (newRecipeImageInput.files[0]) {
       if (newRecipeImageInput.files[0].size > MAX_IMAGE_SIZE) {
         alert("Image size exceeds 5MB limit.");
         return;
       }
-      recipe.image = URL.createObjectURL(newRecipeImageInput.files[0]);
-    } else if (isEditing && existingImageSrcForEdit) {
-      recipe.image = existingImageSrcForEdit;
+      recipe.imageBlob = newRecipeImageInput.files[0];
+    } else if (isEditing && existingImageBase64ForEdit) {
+      recipe.imageBase64 = existingImageBase64ForEdit;
+      recipe.image = URL.createObjectURL(
+        base64ToBlob(existingImageBase64ForEdit)
+      );
     }
 
     if (isEditing && currentRecipeId) {
-      updateRecipe(currentRecipeId, recipe);
+      await updateRecipe(currentRecipeId, recipe);
     } else {
-      addRecipe(recipe);
+      await addRecipe(recipe);
     }
 
     addRecipeSection.classList.add("hidden");
     recipeListSection.classList.remove("hidden");
-    revokeImageObjectURLs([recipe.image]);
+    if (imagePreview.src) URL.revokeObjectURL(imagePreview.src);
   });
 
   deleteRecipeBtn.addEventListener("click", () =>
@@ -1196,14 +1207,14 @@ document.addEventListener("DOMContentLoaded", () => {
     newRecipeCarbsInput.value = recipe.nutrition?.carbs || "";
     newRecipeFatInput.value = recipe.nutrition?.fat || "";
 
-    if (recipe.image) {
+    if (recipe.imageBase64) {
       imagePreview.src = recipe.image;
       imagePreview.classList.remove("hidden");
-      existingImageSrcForEdit = recipe.image;
+      existingImageBase64ForEdit = recipe.imageBase64;
     } else {
       imagePreview.classList.add("hidden");
       imagePreview.src = "";
-      existingImageSrcForEdit = null;
+      existingImageBase64ForEdit = null;
     }
     capturedImageBlob = null;
     imageCaptureStatus.classList.add("hidden");
@@ -1267,7 +1278,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const url = URL.createObjectURL(newRecipeImageInput.files[0]);
       imagePreview.src = url;
       imagePreview.classList.remove("hidden");
-      imageObjectURLs.add(url);
       capturedImageBlob = null;
       imageCaptureStatus.classList.add("hidden");
     }
