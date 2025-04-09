@@ -169,7 +169,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const MAX_SERVINGS = 40;
   const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB limit
   const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const MAX_PDF_IMAGE_SIZE_PTS = 225; // 300px * 0.75 (jsPDF default pt/px ratio)
+  const MAX_PDF_IMAGE_SIZE_PTS = 100; // 300px * 0.75 (jsPDF default pt/px ratio)
 
   // --- IndexedDB Setup ---
   let db;

@@ -1055,8 +1055,9 @@ label > .fa-solid:only-child {
   position: absolute;
   top: 8px;
   right: 8px;
-  padding: 0.3rem 0.6rem;
+  padding: 0.3rem 0.3rem;
   font-size: 0.9rem;
+  background-color: transparent;
 }
 
 #clear-meal-plan-btn {
