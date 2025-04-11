@@ -12,7 +12,7 @@
   --secondary-color: #0984e3;
   --secondary-hover: #74b9ff;
   --danger-color: #d63031;
-  --danger-hover: #ff7675;
+  --danger-hover: #0984e3;
   --neutral-color: #636e72;
   --neutral-hover: #b2bec3;
   --list-item-bg: #e6f0fa;
@@ -55,7 +55,7 @@
   --secondary-color: #0984e3;
   --secondary-hover: #74b9ff;
   --danger-color: #ff7675;
-  --danger-hover: #d63031;
+  --danger-hover: #0984e3;
   --neutral-color: #b2bec3;
   --neutral-hover: #636e72;
   --list-item-bg: #3b4a54;
@@ -1058,6 +1058,16 @@ label > .fa-solid:only-child {
   padding: 0.3rem 0.3rem;
   font-size: 0.9rem;
   background-color: transparent;
+}
+
+/* Fix: Make trashcan icons black in light mode */
+[data-theme="light"] .day-slot .btn-danger i {
+  color: var(--text-color); /* #2d3436 in light mode */
+}
+
+/* Fix: Make logout button text and icon black in light mode */
+[data-theme="light"] #logout-btn.btn-danger {
+  color: var(--text-color); /* #2d3436 in light mode */
 }
 
 #clear-meal-plan-btn {

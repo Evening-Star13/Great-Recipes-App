@@ -139,7 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentRecipeId = null;
   let currentCameraStream = null;
   let capturedImageBlob = null;
-  let existingImageBase64ForEdit = null; // Changed to store base64
+  let existingImageBase64ForEdit = null;
   let shoppingListItems = [];
   let mealPlan = {};
   let userData = { favorites: [], comments: {} };
@@ -169,7 +169,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const MAX_SERVINGS = 40;
   const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB limit
   const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const MAX_PDF_IMAGE_SIZE_PTS = 100; // 300px * 0.75 (jsPDF default pt/px ratio)
+  const MAX_PDF_IMAGE_SIZE_PTS = 100;
 
   // --- IndexedDB Setup ---
   let db;
@@ -363,7 +363,7 @@ document.addEventListener("DOMContentLoaded", () => {
       };
       authSection.classList.add("hidden");
       mainApp.style.display = "block";
-      loadRecipes();
+      loadRecipes().then(() => displayRecipes());
       loadShoppingList();
       loadMealPlan();
     } else {
@@ -409,7 +409,6 @@ document.addEventListener("DOMContentLoaded", () => {
         recipes = loadFromLocalStorage(RECIPES_STORAGE_KEY) || [];
         if (recipes.length) await saveRecipesToIndexedDB();
       }
-      // Regenerate image URLs from base64
       recipes = recipes.map((recipe) => {
         if (recipe.imageBase64) {
           const blob = base64ToBlob(recipe.imageBase64);
@@ -423,11 +422,9 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       saveToLocalStorage(RECIPES_STORAGE_KEY, recipes);
       populateCategoryFilter();
-      displayRecipes();
     } catch (e) {
       console.error("Error loading recipes:", e);
       recipes = loadFromLocalStorage(RECIPES_STORAGE_KEY) || [];
-      displayRecipes();
     } finally {
       loadingSpinner.classList.add("hidden");
     }
@@ -505,10 +502,18 @@ document.addEventListener("DOMContentLoaded", () => {
   function showRecipeDetails(id) {
     currentRecipeId = id;
     const recipe = recipes.find((r) => r.id === id);
-    if (!recipe) return;
+    if (!recipe) {
+      recipeDetailsSection.classList.add("hidden");
+      recipeListSection.classList.remove("hidden");
+      alert("Recipe not found.");
+      return;
+    }
 
     recipeListSection.classList.add("hidden");
     recipeDetailsSection.classList.remove("hidden");
+    mainApp.style.display = "block"; // Ensure main app is visible
+    authSection.classList.add("hidden"); // Hide login screen
+
     detailsTitle.textContent = recipe.name;
     detailsDescription.textContent =
       recipe.description || "No description available.";
@@ -564,6 +569,16 @@ document.addEventListener("DOMContentLoaded", () => {
         : "fa-regular fa-heart";
 
     displayComments(id);
+
+    // Conditionally show/hide buttons based on login state
+    editRecipeBtn.style.display = currentUser ? "inline-flex" : "none";
+    deleteRecipeBtn.style.display = currentUser ? "inline-flex" : "none";
+    addCommentBtn.style.display = currentUser ? "inline-flex" : "none";
+    newCommentInput.style.display = currentUser ? "block" : "none";
+    addToShoppingListBtn.style.display = currentUser ? "inline-flex" : "none";
+    addToMealPlanBtn.style.display = currentUser ? "inline-flex" : "none";
+    addRecipeBtn.style.display = currentUser ? "inline-flex" : "none";
+    logoutBtn.style.display = currentUser ? "inline-flex" : "none";
   }
 
   function adjustIngredients(ingredients, baseServings) {
@@ -596,21 +611,29 @@ document.addEventListener("DOMContentLoaded", () => {
     comments.forEach((comment, index) => {
       const li = document.createElement("li");
       li.innerHTML = `
-        <div class="comment-meta">${currentUser} - ${new Date(
+        <div class="comment-meta">${comment.user} - ${new Date(
         comment.timestamp
       ).toLocaleString()}</div>
         ${comment.text}
-        <div class="comment-actions">
-          <button class="edit-comment-btn">Edit</button>
-          <button class="delete-comment-btn">Delete</button>
-        </div>
+        ${
+          currentUser
+            ? `
+          <div class="comment-actions">
+            <button class="edit-comment-btn">Edit</button>
+            <button class="delete-comment-btn">Delete</button>
+          </div>
+        `
+            : ""
+        }
       `;
-      li.querySelector(".edit-comment-btn").addEventListener("click", () =>
-        editComment(recipeId, index)
-      );
-      li.querySelector(".delete-comment-btn").addEventListener("click", () =>
-        deleteComment(recipeId, index)
-      );
+      if (currentUser) {
+        li.querySelector(".edit-comment-btn").addEventListener("click", () =>
+          editComment(recipeId, index)
+        );
+        li.querySelector(".delete-comment-btn").addEventListener("click", () =>
+          deleteComment(recipeId, index)
+        );
+      }
       commentsList.appendChild(li);
     });
   }
@@ -662,7 +685,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (recipe.imageBlob) {
       recipe.imageBase64 = await blobToBase64(recipe.imageBlob);
       recipe.image = URL.createObjectURL(recipe.imageBlob);
-      delete recipe.image_blob; // Clean up temporary field
+      delete recipe.image_blob;
     }
     recipes.push(recipe);
     saveRecipesToIndexedDB()
@@ -685,7 +708,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (updatedRecipe.imageBlob) {
       updatedRecipe.imageBase64 = await blobToBase64(updatedRecipe.imageBlob);
       updatedRecipe.image = URL.createObjectURL(updatedRecipe.imageBlob);
-      delete updatedRecipe.imageBlob; // Clean up
+      delete updatedRecipe.imageBlob;
     } else if (recipes[index].imageBase64) {
       updatedRecipe.imageBase64 = recipes[index].imageBase64;
       updatedRecipe.image = recipes[index].image;
@@ -998,6 +1021,32 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // --- Share Functionality ---
+  function handleShareFallback(method, url) {
+    switch (method) {
+      case "email":
+        window.location.href = `mailto:?subject=Check out this recipe: ${
+          recipes.find((r) => r.id === currentRecipeId).name
+        }&body=Here's a great recipe: ${url}`;
+        break;
+      case "copy":
+        navigator.clipboard
+          .writeText(url)
+          .then(() => alert("Recipe URL copied to clipboard!"))
+          .catch((err) => alert("Failed to copy URL: " + err));
+        break;
+      case "social":
+        alert(
+          `Please share this URL manually on your preferred platform: ${url}`
+        );
+        break;
+      default:
+        alert(
+          "Invalid option. Please try again with 'email', 'copy', or 'social'."
+        );
+    }
+  }
+
   // --- Camera Functions ---
   async function openCamera() {
     cameraModal.classList.remove("hidden");
@@ -1078,6 +1127,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   addRecipeBtn.addEventListener("click", () => {
+    if (!currentUser) {
+      alert("Please log in to add a recipe.");
+      return;
+    }
     isEditing = false;
     currentRecipeId = null;
     formTitle.textContent = "Add New Recipe";
@@ -1094,7 +1147,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   backBtn.addEventListener("click", () => {
     recipeDetailsSection.classList.add("hidden");
-    recipeListSection.classList.remove("hidden");
+    if (currentUser) {
+      recipeListSection.classList.remove("hidden");
+    } else {
+      mainApp.style.display = "none";
+      authSection.classList.remove("hidden");
+    }
   });
 
   cancelAddBtn.addEventListener("click", () => {
@@ -1248,10 +1306,26 @@ document.addEventListener("DOMContentLoaded", () => {
   shareBtn.addEventListener("click", () => {
     const recipe = recipes.find((r) => r.id === currentRecipeId);
     if (!recipe) return;
-    const url = window.location.href.split("?")[0] + "?recipe=" + recipe.id;
-    navigator.clipboard
-      .writeText(url)
-      .then(() => alert("Recipe URL copied to clipboard!"));
+    const recipeUrl = `${window.location.origin}${window.location.pathname}?recipe=${recipe.id}`;
+
+    if (navigator.share) {
+      navigator
+        .share({
+          title: recipe.name,
+          text: recipe.description || "Check out this delicious recipe!",
+          url: recipeUrl,
+        })
+        .then(() => console.log("Recipe shared successfully"))
+        .catch((err) => console.error("Share failed:", err));
+    } else {
+      const shareMethod = prompt(
+        "How would you like to share this recipe?\nOptions: 'email', 'copy', 'social'",
+        "copy"
+      );
+      if (shareMethod) {
+        handleShareFallback(shareMethod.toLowerCase(), recipeUrl);
+      }
+    }
   });
 
   servingSizeSelect.addEventListener("change", () => {
@@ -1302,9 +1376,18 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   recipesNavBtn.addEventListener("click", () => {
-    recipeListSection.classList.remove("hidden");
+    recipeDetailsSection.classList.add("hidden");
     shoppingListSection.classList.add("hidden");
     mealPlanSection.classList.add("hidden");
+    addRecipeSection.classList.add("hidden");
+    if (currentUser) {
+      recipeListSection.classList.remove("hidden");
+      mainApp.style.display = "block";
+      authSection.classList.add("hidden");
+    } else {
+      mainApp.style.display = "none";
+      authSection.classList.remove("hidden");
+    }
     recipesNavBtn.classList.add("active");
     shoppingListNavBtn.classList.remove("active");
     mealPlanNavBtn.classList.remove("active");
@@ -1315,6 +1398,8 @@ document.addEventListener("DOMContentLoaded", () => {
     recipeListSection.classList.add("hidden");
     shoppingListSection.classList.remove("hidden");
     mealPlanSection.classList.add("hidden");
+    recipeDetailsSection.classList.add("hidden");
+    addRecipeSection.classList.add("hidden");
     recipesNavBtn.classList.remove("active");
     shoppingListNavBtn.classList.add("active");
     mealPlanNavBtn.classList.remove("active");
@@ -1325,6 +1410,8 @@ document.addEventListener("DOMContentLoaded", () => {
     recipeListSection.classList.add("hidden");
     shoppingListSection.classList.add("hidden");
     mealPlanSection.classList.remove("hidden");
+    recipeDetailsSection.classList.add("hidden");
+    addRecipeSection.classList.add("hidden");
     recipesNavBtn.classList.remove("active");
     shoppingListNavBtn.classList.remove("active");
     mealPlanNavBtn.classList.add("active");
@@ -1343,20 +1430,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const urlParams = new URLSearchParams(window.location.search);
   const recipeId = urlParams.get("recipe");
+
+  // Handle direct recipe access or default to auth screen
   if (recipeId) {
+    loadRecipes().then(() => {
+      if (recipes.some((r) => r.id === recipeId)) {
+        authSection.classList.add("hidden");
+        mainApp.style.display = "block";
+        showRecipeDetails(recipeId);
+      } else {
+        authSection.classList.remove("hidden");
+        mainApp.style.display = "none";
+        alert("Recipe not found.");
+        usernameInput.focus();
+      }
+    });
+  } else {
     authSection.classList.remove("hidden");
     mainApp.style.display = "none";
     usernameInput.focus();
-    authForm.addEventListener(
-      "submit",
-      () => {
-        loadRecipes().then(() => {
-          if (recipes.some((r) => r.id === recipeId)) {
-            showRecipeDetails(recipeId);
-          }
-        });
-      },
-      { once: true }
-    );
   }
 });
