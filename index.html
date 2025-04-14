@@ -17,6 +17,7 @@
   <body data-theme="light">
     <div id="auth-section" class="auth-section">
       <div class="auth-container">
+        <h1><i class="fa-solid fa-book-open"></i> My Cook Book</h1>
         <h2><i class="fa-solid fa-user"></i> Login / Register</h2>
         <form id="auth-form">
           <div>
@@ -41,8 +42,8 @@
     <div class="container" id="main-app" style="display: none">
       <header>
         <div class="header-top">
-          <h1><i class="fa-solid fa-book-open"></i> My Recipe Book</h1>
-          <button id="logout-btn" class="btn btn-danger" aria-label="Logout">
+          <h1><i class="fa-solid fa-book-open"></i> My Cook Book</h1>
+          <button id="logout-btn" class="btn btn-primary" aria-label="Logout">
             <i class="fa-solid fa-sign-out-alt"></i> Logout
           </button>
         </div>
@@ -90,6 +91,17 @@
               </select>
             </div>
             <div class="filter-group">
+              <label for="dietary-filter">Dietary Type:</label>
+              <select id="dietary-filter" aria-label="Filter by dietary type">
+                <option value="">All Dietary Types</option>
+                <option value="Gluten-Free">Gluten-Free</option>
+                <option value="Vegan">Vegan</option>
+                <option value="Vegetarian">Vegetarian</option>
+                <option value="Dairy-Free">Dairy-Free</option>
+                <option value="Nut-Free">Nut-Free</option>
+              </select>
+            </div>
+            <div class="filter-group">
               <label for="prep-time-filter">Max Prep Time (min):</label>
               <input
                 type="number"
@@ -97,17 +109,6 @@
                 min="0"
                 aria-label="Maximum preparation time"
               />
-            </div>
-            <div class="filter-group">
-              <label for="rating-filter">Min Rating:</label>
-              <select id="rating-filter" aria-label="Filter by minimum rating">
-                <option value="0">Any</option>
-                <option value="1">1 Star</option>
-                <option value="2">2 Stars</option>
-                <option value="3">3 Stars</option>
-                <option value="4">4 Stars</option>
-                <option value="5">5 Stars</option>
-              </select>
             </div>
             <div class="filter-group">
               <input
@@ -135,7 +136,11 @@
 
         <section id="recipe-list-section">
           <h2><i class="fa-solid fa-list-ul"></i> Recipes</h2>
-          <ul id="recipe-list"></ul>
+          <div class="recipe-list-wrapper">
+            <ul id="recipe-list">
+              <!-- Recipes will be dynamically added here -->
+            </ul>
+          </div>
         </section>
 
         <section id="recipe-details-section" class="hidden">
@@ -169,7 +174,7 @@
           <img
             id="details-image"
             src=""
-            alt="Recipe Image"
+            alt="Recipe"
             class="recipe-image hidden"
           />
           <div id="time-info">
@@ -180,6 +185,10 @@
             <span>
               <span class="label">Cook Time:</span>
               <span class="value" id="cook-time">N/A</span>
+            </span>
+            <span>
+              <span class="label">Additional Time:</span>
+              <span class="value" id="additional-time">N/A</span>
             </span>
             <span>
               <span class="label">Total Time:</span>
@@ -201,15 +210,17 @@
             <span id="base-serving-info"></span>
           </div>
           <div class="category-tags">
-            <h3><i class="fa-solid fa-tags"></i> Categories:</h3>
+            <h3>
+              <i class="fa-solid fa-tags"></i> Categories & Dietary Types:
+            </h3>
             <div id="details-categories"></div>
           </div>
           <h3><i class="fa-solid fa-carrot"></i> Ingredients:</h3>
-          <ul id="details-ingredients"></ul>
-          <h3><i class="fa-solid fa-scroll"></i> Instructions:</h3>
           <button id="add-to-shopping-list-btn" class="btn btn-primary">
             <i class="fa-solid fa-shopping-cart"></i> Add to Shopping List
           </button>
+          <ul id="details-ingredients"></ul>
+          <h3><i class="fa-solid fa-scroll"></i> Instructions:</h3>
           <p id="details-instructions"></p>
           <div id="nutrition-info-section">
             <h3>
@@ -223,22 +234,17 @@
               <li id="nutrition-fat">Fat: <span>N/A</span></li>
             </ul>
           </div>
-          <div class="rating-section">
-            <h3><i class="fa-solid fa-star"></i> Rate this Recipe:</h3>
-            <div id="rating-stars" class="rating-stars"></div>
-            <p id="rating-text">Average Rating: Not rated yet</p>
-          </div>
           <div class="comments-section">
-            <h3><i class="fa-solid fa-comments"></i> Comments:</h3>
+            <h3><i class="fa-solid fa-comments"></i> Notes:</h3>
             <ul id="comments-list"></ul>
             <textarea
               id="new-comment"
-              placeholder="Add a comment..."
+              placeholder="Add a note..."
               rows="3"
-              aria-label="Add a comment"
+              aria-label="Add a note"
             ></textarea>
             <button id="add-comment-btn" class="btn btn-primary">
-              <i class="fa-solid fa-comment-dots"></i> Post Comment
+              <i class="fa-solid fa-comment-dots"></i> Post Note
             </button>
           </div>
           <div class="details-buttons">
@@ -314,9 +320,27 @@
               <input
                 type="text"
                 id="new-recipe-categories"
-                placeholder="e.g., Breakfast, Vegan"
+                placeholder="e.g., Breakfast, Dessert"
                 aria-label="Recipe categories"
               />
+            </div>
+            <div>
+              <label for="new-recipe-dietary"
+                >Dietary Types (hold Ctrl/Cmd to select multiple):</label
+              >
+              <select
+                id="new-recipe-dietary"
+                multiple
+                aria-label="Dietary types"
+                size="6"
+              >
+                <option value="Gluten-Free">Gluten-Free</option>
+                <option value="Vegan">Vegan</option>
+                <option value="Vegetarian">Vegetarian</option>
+                <option value="Dairy-Free">Dairy-Free</option>
+                <option value="Nut-Free">Nut-Free</option>
+                <option value="Keto">Keto</option>
+              </select>
             </div>
             <div>
               <label for="new-recipe-prep-time"
@@ -336,6 +360,16 @@
                 type="text"
                 id="new-recipe-cook-time"
                 aria-label="Cooking time"
+              />
+            </div>
+            <div>
+              <label for="new-recipe-additional-time"
+                >Additional Time (e.g., 10 min resting):</label
+              >
+              <input
+                type="text"
+                id="new-recipe-additional-time"
+                aria-label="Additional time"
               />
             </div>
             <div>
@@ -450,7 +484,7 @@
               <img
                 id="image-preview"
                 src=""
-                alt="Image Preview"
+                alt="Preview"
                 class="image-preview hidden"
               />
               <p id="image-capture-status" class="hidden">
@@ -470,7 +504,8 @@
             class="btn btn-danger"
             aria-label="Clear Shopping List"
           >
-            <i class="fa-solid fa-trash-can"></i> Clear List
+            <i class="fa-solid fa-trash-can shopping_list_delete_btn"></i> Clear
+            List
           </button>
           <ul id="shopping-list"></ul>
         </section>
@@ -560,6 +595,13 @@
             >
               <i class="fa-solid fa-times"></i>
             </button>
+            <button
+              id="switch-camera-btn"
+              class="btn btn-neutral switch-btn"
+              aria-label="Switch Camera"
+            >
+              <i class="fa-solid fa-camera-rotate"></i>
+            </button>
             <video id="camera-video" autoplay playsinline></video>
             <canvas id="camera-canvas" class="hidden"></canvas>
             <button
@@ -590,8 +632,7 @@
     <footer>
       <p>
         &copy; 2025 My Recipe App. All rights reserved. | Developed by
-        <a
-          href="/cdn-cgi/l/email-protection#abd8dedbdbc4d9dfebc9cad9d9dfcec8c3d8c4c7dedfc2c4c5d885c8c4c6"
+        <a href="https://chrisbarranger-portfolio.netlify.app/"
           >Barrtech Solutions</a
         >
       </p>
@@ -612,112 +653,7 @@
           if (b) {
             var d = b.createElement("script");
             d.innerHTML =
-              "window.__CF$cv$params={r:'92cd4d78b8dbda8f',t:'MTc0NDA2ODUxOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
-            b.getElementsByTagName("head")[0].appendChild(d);
-          }
-        }
-        if (document.body) {
-          var a = document.createElement("iframe");
-          a.height = 1;
-          a.width = 1;
-          a.style.position = "absolute";
-          a.style.top = 0;
-          a.style.left = 0;
-          a.style.border = "none";
-          a.style.visibility = "hidden";
-          document.body.appendChild(a);
-          if ("loading" !== document.readyState) c();
-          else if (window.addEventListener)
-            document.addEventListener("DOMContentLoaded", c);
-          else {
-            var e = document.onreadystatechange || function () {};
-            document.onreadystatechange = function (b) {
-              e(b);
-              "loading" !== document.readyState &&
-                ((document.onreadystatechange = e), c());
-            };
-          }
-        }
-      })();
-    </script>
-    <script>
-      (function () {
-        function c() {
-          var b = a.contentDocument || a.contentWindow.document;
-          if (b) {
-            var d = b.createElement("script");
-            d.innerHTML =
-              "window.__CF$cv$params={r:'92cd9fc129aa7bc6',t:'MTc0NDA3MTg5MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
-            b.getElementsByTagName("head")[0].appendChild(d);
-          }
-        }
-        if (document.body) {
-          var a = document.createElement("iframe");
-          a.height = 1;
-          a.width = 1;
-          a.style.position = "absolute";
-          a.style.top = 0;
-          a.style.left = 0;
-          a.style.border = "none";
-          a.style.visibility = "hidden";
-          document.body.appendChild(a);
-          if ("loading" !== document.readyState) c();
-          else if (window.addEventListener)
-            document.addEventListener("DOMContentLoaded", c);
-          else {
-            var e = document.onreadystatechange || function () {};
-            document.onreadystatechange = function (b) {
-              e(b);
-              "loading" !== document.readyState &&
-                ((document.onreadystatechange = e), c());
-            };
-          }
-        }
-      })();
-    </script>
-    <script>
-      (function () {
-        function c() {
-          var b = a.contentDocument || a.contentWindow.document;
-          if (b) {
-            var d = b.createElement("script");
-            d.innerHTML =
-              "window.__CF$cv$params={r:'92cdd50b8879e590',t:'MTc0NDA3NDA3Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
-            b.getElementsByTagName("head")[0].appendChild(d);
-          }
-        }
-        if (document.body) {
-          var a = document.createElement("iframe");
-          a.height = 1;
-          a.width = 1;
-          a.style.position = "absolute";
-          a.style.top = 0;
-          a.style.left = 0;
-          a.style.border = "none";
-          a.style.visibility = "hidden";
-          document.body.appendChild(a);
-          if ("loading" !== document.readyState) c();
-          else if (window.addEventListener)
-            document.addEventListener("DOMContentLoaded", c);
-          else {
-            var e = document.onreadystatechange || function () {};
-            document.onreadystatechange = function (b) {
-              e(b);
-              "loading" !== document.readyState &&
-                ((document.onreadystatechange = e), c());
-            };
-          }
-        }
-      })();
-    </script>
-    <script>
-      (function () {
-        function c() {
-          var b = a.contentDocument || a.contentWindow.document;
-          if (b) {
-            var d = b.createElement("script");
-            d.innerHTML =
-              "window.__CF$cv$params={r:'92ce13d1ca62bcd1',t:'MTc0NDA3NjY0NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+              "window.__CF$cv$params={r:'92d4f5e2092d456a',t:'MTc0NDE0ODgxOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
             b.getElementsByTagName("head")[0].appendChild(d);
           }
         }

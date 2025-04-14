@@ -12,7 +12,7 @@
   --secondary-color: #0984e3;
   --secondary-hover: #74b9ff;
   --danger-color: #d63031;
-  --danger-hover: #ff7675;
+  --danger-hover: #0984e3;
   --neutral-color: #636e72;
   --neutral-hover: #b2bec3;
   --list-item-bg: #e6f0fa;
@@ -36,8 +36,6 @@
   --footer-bg: #dfe6e9;
   --footer-text: #2d3436;
   --favorite-color: #ff6b6b;
-  --rating-star-color: #fdcb6e;
-  --rating-star-hover: #fffb00;
   --nav-bg: #ffffff;
   --nav-active-bg: var(--primary-color);
   --nav-active-color: #ffffff;
@@ -57,7 +55,7 @@
   --secondary-color: #0984e3;
   --secondary-hover: #74b9ff;
   --danger-color: #ff7675;
-  --danger-hover: #d63031;
+  --danger-hover: #0984e3;
   --neutral-color: #b2bec3;
   --neutral-hover: #636e72;
   --list-item-bg: #3b4a54;
@@ -77,7 +75,6 @@
   --footer-bg: #2d3436;
   --footer-text: #dfe6e9;
   --favorite-color: #ff8787;
-  --rating-star-color: #ffeaa7;
   --nav-bg: #2d3436;
   --nav-active-bg: var(--primary-color);
   --nav-active-color: #ffffff;
@@ -134,6 +131,17 @@ body {
   width: 100%;
   max-width: 450px;
   text-align: center;
+}
+
+.auth-container h1 {
+  color: var(--primary-color);
+  font-size: 2.5rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.auth-container h1 .fa-book-open {
+  margin-right: var(--icon-spacing);
 }
 
 .auth-container h2 {
@@ -516,11 +524,7 @@ label > .fa-solid:only-child {
   padding-top: 8px;
 }
 
-#recipe-list {
-  list-style: none;
-  padding-left: 0;
-}
-
+/* Recipe List Collapsible Styles */
 #recipe-list li {
   background-color: var(--list-item-bg);
   color: var(--text-color);
@@ -528,9 +532,42 @@ label > .fa-solid:only-child {
   margin-bottom: 1rem;
   border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  transition: all 0.3s ease;
   border-left: 6px solid var(--list-item-border);
   animation: fadeIn var(--animation-duration) ease;
+}
+
+#recipe-list li .recipe-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+#recipe-list li .recipe-title {
+  font-weight: bold;
+  margin: 0;
+  flex-grow: 1;
+}
+
+#recipe-list li .collapse-icon {
+  transition: transform 0.3s ease;
+}
+
+#recipe-list li .recipe-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  margin-top: 0;
+}
+
+#recipe-list li.expanded .recipe-content {
+  max-height: 500px;
+  margin-top: 1rem;
+}
+
+#recipe-list li.expanded .collapse-icon {
+  transform: rotate(180deg);
 }
 
 #recipe-list li:hover {
@@ -759,39 +796,6 @@ label > .fa-solid:only-child {
   margin-left: 8px;
 }
 
-/* Rating Section */
-.rating-section {
-  margin-top: 2rem;
-}
-
-.rating-stars {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.rating-stars i {
-  font-size: 1.5rem;
-  color: var(--rating-star-color);
-  cursor: pointer;
-  transition: transform 0.2s ease, color 0.2s ease;
-}
-
-.rating-stars i:hover,
-.rating-stars i.hover {
-  transform: scale(1.15);
-  color: var(--rating-star-hover);
-}
-
-.rating-stars i.filled {
-  color: var(--rating-star-color);
-}
-
-#rating-text {
-  font-size: 1rem;
-  color: var(--neutral-color);
-}
-
 /* Comments Section */
 .comments-section {
   margin-top: 2rem;
@@ -878,7 +882,8 @@ label > .fa-solid:only-child {
 
 #add-recipe-form input[type="text"],
 #add-recipe-form input[type="number"],
-#add-recipe-form textarea {
+#add-recipe-form textarea,
+#add-recipe-form select {
   width: 100%;
   padding: 0.75rem;
   border: 1px solid var(--input-border);
@@ -892,7 +897,8 @@ label > .fa-solid:only-child {
 }
 
 #add-recipe-form input:focus,
-#add-recipe-form textarea:focus {
+#add-recipe-form textarea:focus,
+#add-recipe-form select:focus {
   border-color: var(--primary-color);
 }
 
@@ -986,20 +992,6 @@ label > .fa-solid:only-child {
   margin-top: 0.75rem;
 }
 
-/* Edit Recipe Image (assuming similar structure) */
-#edit-recipe-form .image-input-area .image-preview {
-  max-width: 300px;
-  max-height: 300px;
-  width: auto;
-  height: auto;
-  display: block;
-  margin: 1.5rem auto;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  box-shadow: 0 2px 5px var(--shadow-color);
-  object-fit: contain;
-}
-
 /* --- Camera Modal --- */
 .modal {
   position: fixed;
@@ -1034,6 +1026,12 @@ label > .fa-solid:only-child {
   margin-bottom: 1.5rem;
 }
 
+.switch-btn {
+  position: absolute;
+  top: 10px;
+  right: 60px; /* Adjusted to avoid overlap with close button */
+}
+
 /* --- Shopping List Section --- */
 #shopping-list {
   list-style: none;
@@ -1041,23 +1039,61 @@ label > .fa-solid:only-child {
 }
 
 #shopping-list li {
+  background-color: var(--list-item-bg);
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: 0 0 8px 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
-  background-color: var(--list-item-bg);
-  margin-bottom: 0.75rem;
-  border-radius: 8px;
-  border-left: 6px solid var(--list-item-border);
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
-#shopping-list li button {
-  padding: 0.5rem 1rem;
-  font-size: 0.95rem;
+#shopping-list li:last-child {
+  border-radius: 0 0 8px 8px;
+}
+
+.shopping-item-text {
+  flex-grow: 1;
+}
+
+.shopping-item-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.shopping-item-info .btn {
+  background-color: transparent;
+  width: 10px;
+}
+
+.shopping-item-info .btn:hover {
+  background-color: var(--danger-hover);
+  width: 10px;
+}
+
+.shopping-item-recipe {
+  font-size: 0.9rem;
+  color: var(--neutral-color);
 }
 
 #clear-shopping-list-btn {
   margin-top: 1.5rem;
+}
+
+.shopping-list-recipe-header {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 0.75rem 1rem;
+  margin-top: 1.5rem;
+  border-radius: 8px 8px 0 0;
+}
+
+.shopping-list-recipe-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
 }
 
 /* --- Meal Plan Section --- */
@@ -1097,8 +1133,24 @@ label > .fa-solid:only-child {
   position: absolute;
   top: 8px;
   right: 8px;
-  padding: 0.3rem 0.6rem;
+  padding: 0.3rem 0.3rem;
   font-size: 0.9rem;
+  background-color: transparent;
+}
+
+/* Fix: Make trashcan icons black in light mode */
+[data-theme="light"] .day-slot .btn-danger i {
+  color: var(--text-color); /* #2d3436 in light mode */
+}
+
+/* Fix: Make logout button text and icon black in light mode */
+[data-theme="light"] #logout-btn.btn-danger {
+  color: var(--text-color); /* #2d3436 in light mode */
+}
+
+/* Fix: Make shopping list delete button icons black in light mode */
+[data-theme="light"] .shopping-item-info .btn-danger i {
+  color: var(--text-color);
 }
 
 #clear-meal-plan-btn {
@@ -1490,8 +1542,6 @@ label {
   .serving-controls,
   footer,
   .bottom-nav,
-  .rating-section,
-  .comments-section,
   .recipe-actions,
   .filters-section {
     display: none;
@@ -1534,4 +1584,9 @@ label {
   #details-nutrition li span {
     color: #000;
   }
+}
+
+#new-recipe-dietary {
+  height: auto;
+  min-height: 120px;
 }
