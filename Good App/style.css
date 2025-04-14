@@ -513,11 +513,7 @@ label > .fa-solid:only-child {
   padding-top: 8px;
 }
 
-#recipe-list {
-  list-style: none;
-  padding-left: 0;
-}
-
+/* Recipe List Collapsible Styles */
 #recipe-list li {
   background-color: var(--list-item-bg);
   color: var(--text-color);
@@ -525,9 +521,42 @@ label > .fa-solid:only-child {
   margin-bottom: 1rem;
   border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  transition: all 0.3s ease;
   border-left: 6px solid var(--list-item-border);
   animation: fadeIn var(--animation-duration) ease;
+}
+
+#recipe-list li .recipe-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+#recipe-list li .recipe-title {
+  font-weight: bold;
+  margin: 0;
+  flex-grow: 1;
+}
+
+#recipe-list li .collapse-icon {
+  transition: transform 0.3s ease;
+}
+
+#recipe-list li .recipe-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  margin-top: 0;
+}
+
+#recipe-list li.expanded .recipe-content {
+  max-height: 500px;
+  margin-top: 1rem;
+}
+
+#recipe-list li.expanded .collapse-icon {
+  transform: rotate(180deg);
 }
 
 #recipe-list li:hover {

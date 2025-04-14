@@ -449,18 +449,48 @@ document.addEventListener("DOMContentLoaded", () => {
         '<li class="no-results">No recipes found matching your criteria.</li>';
       return;
     }
+
     filteredRecipes.forEach((recipe) => {
       const li = document.createElement("li");
       li.innerHTML = `
-        <strong>${recipe.name}</strong>
-        <br>
-        ${recipe.description ? `<small>${recipe.description}</small><br>` : ""}
-        <small>Prep: ${recipe.prepTime || "N/A"} | Total: ${
-        recipe.totalTime || "N/A"
-      }</small>
+        <div class="recipe-header">
+          <h3 class="recipe-title">${recipe.name}</h3>
+          <i class="fa-solid fa-chevron-down collapse-icon"></i>
+        </div>
+        <div class="recipe-content">
+          ${recipe.description ? `<p>${recipe.description}</p>` : ""}
+          <p><strong>Prep Time:</strong> ${recipe.prepTime || "N/A"}</p>
+          <p><strong>Total Time:</strong> ${recipe.totalTime || "N/A"}</p>
+          ${
+            recipe.categories
+              ? `<p><strong>Categories:</strong> ${recipe.categories.join(
+                  ", "
+                )}</p>`
+              : ""
+          }
+          ${
+            recipe.dietaryType
+              ? `<p><strong>Dietary Type:</strong> ${recipe.dietaryType}</p>`
+              : ""
+          }
+        </div>
       `;
       li.dataset.id = recipe.id;
-      li.addEventListener("click", () => showRecipeDetails(recipe.id));
+
+      // Add click handler for the header to toggle expansion
+      const header = li.querySelector(".recipe-header");
+      header.addEventListener("click", (e) => {
+        e.stopPropagation();
+        li.classList.toggle("expanded");
+      });
+
+      // Add click handler for the whole recipe to show details
+      li.addEventListener("click", (e) => {
+        if (!e.target.closest(".recipe-header")) {
+          showRecipeDetails(recipe.id);
+        }
+      });
+
       recipeList.appendChild(li);
     });
   }
