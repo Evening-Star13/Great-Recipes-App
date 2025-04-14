@@ -186,6 +186,10 @@
               <span class="value" id="cook-time">N/A</span>
             </span>
             <span>
+              <span class="label">Additional Time:</span>
+              <span class="value" id="additional-time">N/A</span>
+            </span>
+            <span>
               <span class="label">Total Time:</span>
               <span class="value" id="total-time">N/A</span>
             </span>
@@ -320,14 +324,21 @@
               />
             </div>
             <div>
-              <label for="new-recipe-dietary">Dietary Type:</label>
-              <select id="new-recipe-dietary" aria-label="Dietary type">
-                <option value="">None</option>
+              <label for="new-recipe-dietary"
+                >Dietary Types (hold Ctrl/Cmd to select multiple):</label
+              >
+              <select
+                id="new-recipe-dietary"
+                multiple
+                aria-label="Dietary types"
+                size="6"
+              >
                 <option value="Gluten-Free">Gluten-Free</option>
                 <option value="Vegan">Vegan</option>
                 <option value="Vegetarian">Vegetarian</option>
                 <option value="Dairy-Free">Dairy-Free</option>
                 <option value="Nut-Free">Nut-Free</option>
+                <option value="Keto">Keto</option>
               </select>
             </div>
             <div>
@@ -348,6 +359,16 @@
                 type="text"
                 id="new-recipe-cook-time"
                 aria-label="Cooking time"
+              />
+            </div>
+            <div>
+              <label for="new-recipe-additional-time"
+                >Additional Time (e.g., 10 min resting):</label
+              >
+              <input
+                type="text"
+                id="new-recipe-additional-time"
+                aria-label="Additional time"
               />
             </div>
             <div>

@@ -1028,23 +1028,51 @@ label > .fa-solid:only-child {
 }
 
 #shopping-list li {
+  background-color: var(--list-item-bg);
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: 0 0 8px 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
-  background-color: var(--list-item-bg);
-  margin-bottom: 0.75rem;
-  border-radius: 8px;
-  border-left: 6px solid var(--list-item-border);
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
-#shopping-list li button {
-  padding: 0.5rem 1rem;
-  font-size: 0.95rem;
+#shopping-list li:last-child {
+  border-radius: 0 0 8px 8px;
+}
+
+.shopping-item-text {
+  flex-grow: 1;
+}
+
+.shopping-item-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.shopping-item-recipe {
+  font-size: 0.9rem;
+  color: var(--neutral-color);
 }
 
 #clear-shopping-list-btn {
   margin-top: 1.5rem;
+}
+
+.shopping-list-recipe-header {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 0.75rem 1rem;
+  margin-top: 1.5rem;
+  border-radius: 8px 8px 0 0;
+}
+
+.shopping-list-recipe-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
 }
 
 /* --- Meal Plan Section --- */
@@ -1530,4 +1558,9 @@ label {
   #details-nutrition li span {
     color: #000;
   }
+}
+
+#new-recipe-dietary {
+  height: auto;
+  min-height: 120px;
 }

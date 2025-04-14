@@ -132,6 +132,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const shoppingListNavBtn = document.getElementById("shopping-list-nav-btn");
   const mealPlanNavBtn = document.getElementById("meal-plan-nav-btn");
   const loadingSpinner = document.getElementById("loading-spinner");
+  const newRecipeAdditionalTimeInput = document.getElementById(
+    "new-recipe-additional-time"
+  );
+  const additionalTime = document.getElementById("additional-time");
 
   // --- State ---
   let currentUser = null;
@@ -473,6 +477,13 @@ document.addEventListener("DOMContentLoaded", () => {
               ? `<p><strong>Dietary Type:</strong> ${recipe.dietaryType}</p>`
               : ""
           }
+          ${
+            recipe.dietaryTypes && recipe.dietaryTypes.length > 0
+              ? `<p><strong>Dietary Types:</strong> ${recipe.dietaryTypes.join(
+                  ", "
+                )}</p>`
+              : ""
+          }
         </div>
       `;
       li.dataset.id = recipe.id;
@@ -549,7 +560,9 @@ document.addEventListener("DOMContentLoaded", () => {
       recipe.description || "No description available.";
     detailsCategories.innerHTML = "";
     const combinedTags = [...(recipe.categories || [])];
-    if (recipe.dietaryType) combinedTags.push(recipe.dietaryType);
+    if (recipe.dietaryTypes && recipe.dietaryTypes.length > 0) {
+      combinedTags.push(...recipe.dietaryTypes);
+    }
     combinedTags.forEach((tag) => {
       const span = document.createElement("span");
       span.className = "category-tag";
@@ -559,6 +572,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     prepTime.textContent = recipe.prepTime || "N/A";
     cookTime.textContent = recipe.cookTime || "N/A";
+    additionalTime.textContent = recipe.additionalTime || "N/A";
     totalTime.textContent = recipe.totalTime || "N/A";
     servingsInfo.textContent = `${recipe.servings} servings`;
     baseServingInfo.textContent = `(Base recipe makes ${recipe.servings} servings)`;
@@ -733,8 +747,12 @@ document.addEventListener("DOMContentLoaded", () => {
   async function updateRecipe(recipeId, updatedRecipe) {
     const index = recipes.findIndex((r) => r.id === recipeId);
     if (index === -1) return;
+
+    // Preserve recipe ID and creator
     updatedRecipe.id = recipeId;
     updatedRecipe.createdBy = recipes[index].createdBy;
+
+    // Handle image conversion
     if (updatedRecipe.imageBlob) {
       updatedRecipe.imageBase64 = await blobToBase64(updatedRecipe.imageBlob);
       updatedRecipe.image = URL.createObjectURL(updatedRecipe.imageBlob);
@@ -743,19 +761,29 @@ document.addEventListener("DOMContentLoaded", () => {
       updatedRecipe.imageBase64 = recipes[index].imageBase64;
       updatedRecipe.image = recipes[index].image;
     }
+
+    // Update recipe in array
     recipes[index] = updatedRecipe;
-    saveRecipesToIndexedDB()
-      .then(() => {
-        saveToLocalStorage(RECIPES_STORAGE_KEY, recipes);
-        console.log("Recipe updated:", updatedRecipe);
-        showRecipeDetails(recipeId);
-        displayRecipes();
-      })
-      .catch((e) => console.error("Failed to update recipe:", e));
-    updatedRecipe.categories?.forEach((cat) => allCategories.add(cat));
-    if (updatedRecipe.dietaryType)
-      allDietaryTypes.add(updatedRecipe.dietaryType);
-    populateCategoryFilter();
+
+    // Save to storage
+    try {
+      await saveRecipesToIndexedDB();
+      saveToLocalStorage(RECIPES_STORAGE_KEY, recipes);
+      console.log("Recipe updated:", updatedRecipe);
+
+      // Update categories and dietary types sets
+      updatedRecipe.categories?.forEach((cat) => allCategories.add(cat));
+      updatedRecipe.dietaryTypes?.forEach((type) => allDietaryTypes.add(type));
+
+      // Refresh filters
+      populateCategoryFilter();
+
+      // Show updated recipe
+      showRecipeDetails(recipeId);
+    } catch (error) {
+      console.error("Failed to update recipe:", error);
+      throw error;
+    }
   }
 
   function deleteRecipe(id) {
@@ -802,11 +830,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const maxWidth = pageWidth - 2 * margin;
     let y = margin;
 
+    // Title
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
     doc.text(recipe.name, margin, y, { maxWidth });
     y += 10;
 
+    // Image handling
     if (recipe.imageBase64) {
       try {
         const imgData = recipe.imageBase64;
@@ -839,6 +869,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
+    // Description
     if (recipe.description) {
       doc.setFontSize(12);
       doc.setFont("helvetica", "normal");
@@ -849,6 +880,7 @@ document.addEventListener("DOMContentLoaded", () => {
       y += doc.splitTextToSize(recipe.description, maxWidth).length * 5 + 5;
     }
 
+    // Time information
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.text("Time:", margin, y);
@@ -859,25 +891,33 @@ document.addEventListener("DOMContentLoaded", () => {
     y += 5;
     doc.text(`Cook Time: ${recipe.cookTime || "N/A"}`, margin, y);
     y += 5;
+    doc.text(`Additional Time: ${recipe.additionalTime || "N/A"}`, margin, y);
+    y += 5;
     doc.text(`Total Time: ${recipe.totalTime || "N/A"}`, margin, y);
     y += 5;
     doc.text(`Servings: ${recipe.servings || "N/A"}`, margin, y);
     y += 10;
 
+    // Categories and Dietary Types
     const combinedTags = [...(recipe.categories || [])];
-    if (recipe.dietaryType) combinedTags.push(recipe.dietaryType);
-    if (combinedTags.length) {
+    if (recipe.dietaryTypes && recipe.dietaryTypes.length > 0) {
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
       doc.text("Categories & Dietary Types:", margin, y);
       y += 6;
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text(combinedTags.join(", "), margin, y, { maxWidth });
-      y +=
-        doc.splitTextToSize(combinedTags.join(", "), maxWidth).length * 5 + 5;
+
+      if (recipe.categories && recipe.categories.length > 0) {
+        doc.text(`Categories: ${recipe.categories.join(", ")}`, margin, y);
+        y += 5;
+      }
+
+      doc.text(`Dietary Types: ${recipe.dietaryTypes.join(", ")}`, margin, y);
+      y += 10;
     }
 
+    // Ingredients
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.text("Ingredients:", margin, y);
@@ -895,6 +935,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     y += 5;
 
+    // Instructions
     if (recipe.instructions) {
       if (y > doc.internal.pageSize.getHeight() - margin - 20) {
         doc.addPage();
@@ -918,8 +959,11 @@ document.addEventListener("DOMContentLoaded", () => {
         doc.text(line, margin, y);
         y += 5;
       });
+      // Add extra spacing after instructions
+      y += 10;
     }
 
+    // Nutrition Information
     if (recipe.nutrition) {
       if (y > doc.internal.pageSize.getHeight() - margin - 20) {
         doc.addPage();
@@ -959,37 +1003,93 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function displayShoppingList() {
     shoppingList.innerHTML = "";
-    shoppingListItems.forEach((item, index) => {
-      const li = document.createElement("li");
-      li.textContent = item;
-      const removeBtn = document.createElement("button");
-      removeBtn.className = "btn btn-danger";
-      removeBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
-      removeBtn.addEventListener("click", () => {
-        shoppingListItems.splice(index, 1);
-        saveShoppingList();
-        displayShoppingList();
+
+    // Group items by recipe
+    const groupedItems = {};
+    shoppingListItems.forEach((item) => {
+      if (!groupedItems[item.recipeId]) {
+        groupedItems[item.recipeId] = {
+          recipeName: item.recipeName,
+          items: [],
+        };
+      }
+      groupedItems[item.recipeId].items.push(item);
+    });
+
+    // Display items grouped by recipe
+    Object.entries(groupedItems).forEach(([recipeId, data]) => {
+      const recipeHeader = document.createElement("div");
+      recipeHeader.className = "shopping-list-recipe-header";
+      recipeHeader.innerHTML = `<h3>${data.recipeName}</h3>`;
+      shoppingList.appendChild(recipeHeader);
+
+      data.items.forEach((item) => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <span class="shopping-item-text">${item.text}</span>
+          <div class="shopping-item-info">
+            <span class="shopping-item-recipe">For ${item.servings} servings</span>
+            <button class="btn btn-danger remove-item-btn">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        `;
+
+        li.querySelector(".remove-item-btn").addEventListener("click", () => {
+          shoppingListItems = shoppingListItems.filter(
+            (i) => !(i.text === item.text && i.recipeId === item.recipeId)
+          );
+          saveShoppingList();
+          displayShoppingList();
+        });
+
+        shoppingList.appendChild(li);
       });
-      li.appendChild(removeBtn);
-      shoppingList.appendChild(li);
     });
   }
 
   function addToShoppingList() {
     const recipe = recipes.find((r) => r.id === currentRecipeId);
-    if (!recipe) return;
+    if (!recipe || !recipe.ingredients) {
+      alert("No recipe or ingredients found!");
+      return;
+    }
+
     const selectedServings =
       parseInt(servingSizeSelect.value) || recipe.servings;
     const factor = selectedServings / recipe.servings;
+    let addedItems = false;
+
     recipe.ingredients.forEach((ing) => {
       const qty = parseQuantity(ing.quantity);
       const adjustedQty =
         qty !== null ? formatQuantity(qty * factor) : ing.quantity;
-      const item = `${adjustedQty} ${ing.unit || ""} ${ing.name}`.trim();
-      if (!shoppingListItems.includes(item)) shoppingListItems.push(item);
+      const item = {
+        text: `${adjustedQty} ${ing.unit || ""} ${ing.name}`.trim(),
+        recipeId: recipe.id,
+        recipeName: recipe.name,
+        originalQty: ing.quantity,
+        servings: selectedServings,
+      };
+
+      // Check if item already exists from this recipe
+      const existingIndex = shoppingListItems.findIndex(
+        (i) => i.text === item.text && i.recipeId === item.recipeId
+      );
+
+      if (existingIndex === -1) {
+        shoppingListItems.push(item);
+        addedItems = true;
+      }
     });
-    saveShoppingList();
-    alert("Ingredients added to shopping list!");
+
+    if (addedItems) {
+      saveShoppingList();
+      displayShoppingList();
+      alert("Ingredients added to shopping list!");
+    } else {
+      alert("These ingredients are already in your shopping list!");
+    }
   }
 
   function clearShoppingList() {
@@ -1171,7 +1271,14 @@ document.addEventListener("DOMContentLoaded", () => {
     imageCaptureStatus.classList.add("hidden");
     capturedImageBlob = null;
     existingImageBase64ForEdit = null;
+
+    // Hide all other sections first
     recipeListSection.classList.add("hidden");
+    recipeDetailsSection.classList.add("hidden");
+    shoppingListSection.classList.add("hidden");
+    mealPlanSection.classList.add("hidden");
+
+    // Show add recipe section
     addRecipeSection.classList.remove("hidden");
   });
 
@@ -1193,6 +1300,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   addRecipeForm.addEventListener("submit", async (e) => {
     e.preventDefault();
+
+    // Validate required fields
     if (!newRecipeNameInput.value.trim()) {
       alert("Recipe name is required.");
       return;
@@ -1206,6 +1315,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    // Parse ingredients
     const ingredients = newRecipeIngredientsInput.value
       .split("\n")
       .map((line) => {
@@ -1220,6 +1330,7 @@ document.addEventListener("DOMContentLoaded", () => {
       })
       .filter((ing) => ing.quantity || ing.name);
 
+    // Create recipe object
     const recipe = {
       name: newRecipeNameInput.value.trim(),
       description: newRecipeDescriptionInput.value.trim() || "",
@@ -1227,12 +1338,15 @@ document.addEventListener("DOMContentLoaded", () => {
         .split(",")
         .map((c) => c.trim())
         .filter((c) => c),
-      dietaryType: newRecipeDietaryInput.value || "",
+      dietaryTypes: Array.from(newRecipeDietaryInput.selectedOptions).map(
+        (opt) => opt.value
+      ),
       prepTime: newRecipePrepTimeInput.value.trim() || "",
       cookTime: newRecipeCookTimeInput.value.trim() || "",
+      additionalTime: newRecipeAdditionalTimeInput.value.trim() || "",
       totalTime: newRecipeTotalTimeInput.value.trim() || "",
       servings: parseInt(newRecipeServingsInput.value) || 1,
-      ingredients,
+      ingredients: ingredients,
       instructions: newRecipeInstructionsInput.value.trim(),
       nutrition: {
         calories: newRecipeCaloriesInput.value.trim() || "N/A",
@@ -1242,6 +1356,7 @@ document.addEventListener("DOMContentLoaded", () => {
       },
     };
 
+    // Handle image
     if (capturedImageBlob) {
       recipe.imageBlob = capturedImageBlob;
     } else if (newRecipeImageInput.files[0]) {
@@ -1257,15 +1372,31 @@ document.addEventListener("DOMContentLoaded", () => {
       );
     }
 
-    if (isEditing && currentRecipeId) {
-      await updateRecipe(currentRecipeId, recipe);
-    } else {
-      await addRecipe(recipe);
-    }
+    try {
+      if (isEditing && currentRecipeId) {
+        await updateRecipe(currentRecipeId, recipe);
+      } else {
+        await addRecipe(recipe);
+      }
 
-    addRecipeSection.classList.add("hidden");
-    recipeListSection.classList.remove("hidden");
-    if (imagePreview.src) URL.revokeObjectURL(imagePreview.src);
+      // Reset form and state
+      addRecipeForm.reset();
+      imagePreview.classList.add("hidden");
+      imagePreview.src = "";
+      capturedImageBlob = null;
+      existingImageBase64ForEdit = null;
+      isEditing = false;
+
+      // Show recipe list
+      addRecipeSection.classList.add("hidden");
+      recipeListSection.classList.remove("hidden");
+
+      // Refresh display
+      displayRecipes();
+    } catch (error) {
+      console.error("Error saving recipe:", error);
+      alert("Failed to save recipe. Please try again.");
+    }
   });
 
   deleteRecipeBtn.addEventListener("click", () =>
@@ -1275,39 +1406,55 @@ document.addEventListener("DOMContentLoaded", () => {
   editRecipeBtn.addEventListener("click", () => {
     const recipe = recipes.find((r) => r.id === currentRecipeId);
     if (!recipe) return;
+
     isEditing = true;
     formTitle.textContent = "Edit Recipe";
     saveUpdateBtn.textContent = "Update Recipe";
+
+    // Fill in all form fields
     newRecipeNameInput.value = recipe.name;
     newRecipeDescriptionInput.value = recipe.description || "";
     newRecipeCategoriesInput.value = recipe.categories?.join(", ") || "";
-    newRecipeDietaryInput.value = recipe.dietaryType || "";
     newRecipePrepTimeInput.value = recipe.prepTime || "";
     newRecipeCookTimeInput.value = recipe.cookTime || "";
+    newRecipeAdditionalTimeInput.value = recipe.additionalTime || "";
     newRecipeTotalTimeInput.value = recipe.totalTime || "";
     newRecipeServingsInput.value = recipe.servings || 1;
-    newRecipeIngredientsInput.value = recipe.ingredients
-      .map((ing) => `${ing.quantity} ${ing.unit || ""} ${ing.name}`.trim())
-      .join("\n");
+    newRecipeIngredientsInput.value =
+      recipe.ingredients
+        ?.map((ing) =>
+          `${ing.quantity || ""} ${ing.unit || ""} ${ing.name || ""}`.trim()
+        )
+        .join("\n") || "";
     newRecipeInstructionsInput.value = recipe.instructions || "";
+
+    // Fill nutrition info
     newRecipeCaloriesInput.value = recipe.nutrition?.calories || "";
     newRecipeProteinInput.value = recipe.nutrition?.protein || "";
     newRecipeCarbsInput.value = recipe.nutrition?.carbs || "";
     newRecipeFatInput.value = recipe.nutrition?.fat || "";
 
+    // Handle dietary types
+    Array.from(newRecipeDietaryInput.options).forEach((option) => {
+      option.selected = recipe.dietaryTypes?.includes(option.value) || false;
+    });
+
+    // Handle image preview
     if (recipe.imageBase64) {
+      existingImageBase64ForEdit = recipe.imageBase64;
       imagePreview.src = recipe.image;
       imagePreview.classList.remove("hidden");
-      existingImageBase64ForEdit = recipe.imageBase64;
     } else {
       imagePreview.classList.add("hidden");
       imagePreview.src = "";
       existingImageBase64ForEdit = null;
     }
-    capturedImageBlob = null;
-    imageCaptureStatus.classList.add("hidden");
 
+    // Hide other sections and show add recipe form
     recipeDetailsSection.classList.add("hidden");
+    recipeListSection.classList.add("hidden");
+    shoppingListSection.classList.add("hidden");
+    mealPlanSection.classList.add("hidden");
     addRecipeSection.classList.remove("hidden");
   });
 
@@ -1368,7 +1515,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   addCommentBtn.addEventListener("click", () => addComment(currentRecipeId));
 
-  addToShoppingListBtn.addEventListener("click", addToShoppingList);
+  addToShoppingListBtn.addEventListener("click", () => {
+    if (!currentUser) {
+      alert("Please log in to add items to shopping list.");
+      return;
+    }
+    addToShoppingList();
+  });
 
   addToMealPlanBtn.addEventListener("click", addToMealPlan);
 
