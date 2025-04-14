@@ -154,6 +154,8 @@ document.addEventListener("DOMContentLoaded", () => {
     "Vegetarian",
     "Dairy-Free",
     "Nut-Free",
+    "Keto",
+    "Fish",
   ]);
   let isFrontCamera = false;
   let isEditing = false;
@@ -520,7 +522,9 @@ document.addEventListener("DOMContentLoaded", () => {
           r.name.toLowerCase().includes(searchTerm) ||
           r.description?.toLowerCase().includes(searchTerm) ||
           r.categories?.some((cat) => cat.toLowerCase().includes(searchTerm)) ||
-          r.dietaryType?.toLowerCase().includes(searchTerm)
+          r.dietaryTypes?.some((type) =>
+            type.toLowerCase().includes(searchTerm)
+          )
       );
     }
     if (selectedCategory) {
@@ -529,7 +533,9 @@ document.addEventListener("DOMContentLoaded", () => {
       );
     }
     if (selectedDietary) {
-      filtered = filtered.filter((r) => r.dietaryType === selectedDietary);
+      filtered = filtered.filter((r) =>
+        r.dietaryTypes?.includes(selectedDietary)
+      );
     }
     if (maxPrepTime) {
       filtered = filtered.filter((r) => parseTime(r.prepTime) <= maxPrepTime);

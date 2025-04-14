@@ -133,6 +133,17 @@ body {
   text-align: center;
 }
 
+.auth-container h1 {
+  color: var(--primary-color);
+  font-size: 2.5rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.auth-container h1 .fa-book-open {
+  margin-right: var(--icon-spacing);
+}
+
 .auth-container h2 {
   margin-bottom: 2rem;
   color: var(--heading-color);
@@ -1053,6 +1064,16 @@ label > .fa-solid:only-child {
   gap: 1rem;
 }
 
+.shopping-item-info .btn {
+  background-color: transparent;
+  width: 10px;
+}
+
+.shopping-item-info .btn:hover {
+  background-color: var(--danger-hover);
+  width: 10px;
+}
+
 .shopping-item-recipe {
   font-size: 0.9rem;
   color: var(--neutral-color);
@@ -1125,6 +1146,11 @@ label > .fa-solid:only-child {
 /* Fix: Make logout button text and icon black in light mode */
 [data-theme="light"] #logout-btn.btn-danger {
   color: var(--text-color); /* #2d3436 in light mode */
+}
+
+/* Fix: Make shopping list delete button icons black in light mode */
+[data-theme="light"] .shopping-item-info .btn-danger i {
+  color: var(--text-color);
 }
 
 #clear-meal-plan-btn {
