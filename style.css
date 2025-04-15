@@ -80,6 +80,21 @@
   --nav-active-color: #ffffff;
 }
 
+[data-theme="dark"] .profile-modal {
+  background-color: var(--container-bg);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .profile-modal input {
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .profile-modal input:read-only {
+  background-color: var(--neutral-color);
+}
+
 /* --- Base & Container Styles --- */
 html {
   font-size: var(--base-font-size);
@@ -992,8 +1007,166 @@ label > .fa-solid:only-child {
   margin-top: 0.75rem;
 }
 
-/* --- Camera Modal --- */
+/* --- Modal Styles --- */
 .modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--modal-bg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.modal-content {
+  background-color: var(--modal-content-bg);
+  padding: var(--modal-padding);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+/* --- Profile Modal Specific Styles --- */
+#profile-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  background-color: var(--modal-bg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+#profile-modal .modal-content {
+  background-color: var(--container-bg);
+  width: 90%;
+  max-width: 500px;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+#profile-modal .modal-header {
+  text-align: center;
+  border-bottom: 2px solid var(--border-color);
+  margin: -0.5rem 0 2rem 0;
+  padding-bottom: 1rem;
+  position: relative;
+}
+
+#profile-modal .modal-header h2 {
+  font-size: 1.8rem;
+  margin: 0;
+  color: var(--heading-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+#profile-modal .btn-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-color);
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+#profile-modal .profile-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#profile-modal .profile-image-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  width: 100%;
+}
+
+#profile-modal #profile-avatar {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 4px solid var(--primary-color);
+  object-fit: cover;
+  margin: 0 auto;
+}
+
+#profile-modal .form-group {
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+#profile-modal .form-group:last-child {
+  margin-bottom: 0;
+}
+
+#profile-modal .form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
+#profile-modal .form-group input:read-only {
+  background-color: var(--neutral-color);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+#profile-modal .profile-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+#profile-modal .profile-actions button {
+  flex: 1;
+  padding: 0.75rem 1rem;
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] #profile-modal .modal-content {
+  background-color: var(--container-bg);
+  border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] #profile-modal .form-group input {
+  background-color: var(--input-bg);
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+/* --- Camera Modal --- */
+#profile-modal {
   position: fixed;
   top: 0;
   left: 0;
@@ -1006,15 +1179,54 @@ label > .fa-solid:only-child {
   z-index: 1000;
 }
 
-.modal-content {
-  background-color: var(--modal-content-bg);
-  padding: var(--modal-padding);
-  border-radius: 12px;
+#profile-modal .modal-content {
+  background-color: var(--container-bg);
   width: 90%;
-  max-width: 550px;
-  box-shadow: 0 4px 15px var(--shadow-color);
-  position: relative;
+  max-width: 500px;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+#profile-modal .modal-header {
   text-align: center;
+  border-bottom: 2px solid var(--border-color);
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  position: relative;
+}
+
+#profile-modal .modal-header h2 {
+  font-size: 1.8rem;
+  margin: 0;
+  color: var(--heading-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+#profile-modal .profile-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#profile-modal .profile-image-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  width: 100%;
+}
+
+#profile-modal #profile-avatar {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 4px solid var(--primary-color);
+  object-fit: cover;
 }
 
 #camera-video,
@@ -1589,4 +1801,206 @@ label {
 #new-recipe-dietary {
   height: auto;
   min-height: 120px;
+}
+
+/* --- Avatar and Profile Styles --- */
+.user-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  padding: 0;
+  border: 2px solid var(--primary-color);
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+
+.avatar-button:hover {
+  transform: scale(1.1);
+}
+
+.avatar-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  background-color: var(--container-bg);
+}
+
+.profile-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  background: var(--modal-bg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.profile-modal .modal-content {
+  background: var(--container-bg);
+  width: 90%;
+  max-width: 500px;
+  border-radius: 12px;
+  position: relative;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  margin: 0 auto;
+}
+
+.profile-modal .modal-header {
+  text-align: center;
+  border-bottom: 2px solid var(--border-color);
+  margin: -0.5rem 0 1rem 0;
+  padding-bottom: 1rem;
+  position: relative;
+}
+
+.profile-modal .modal-header h2 {
+  font-size: 1.8rem;
+  margin: 0;
+  color: var(--heading-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.profile-modal .btn-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-color);
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+.profile-modal .profile-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.profile-modal .profile-image-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  width: 100%;
+}
+
+.profile-modal #profile-avatar {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 4px solid var(--primary-color);
+  object-fit: cover;
+  margin: 0 auto;
+}
+
+.profile-modal .profile-image-controls {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.profile-modal .form-group {
+  margin-bottom: 1.5rem;
+  width: 100%;
+}
+
+.profile-modal .form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.profile-modal .form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
+.profile-modal .form-group input:read-only {
+  background-color: var(--neutral-color);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.profile-modal .profile-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.profile-modal .profile-actions button {
+  flex: 1;
+  padding: 0.75rem 1rem;
+}
+
+/* Header avatar button styles */
+.user-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.avatar-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  padding: 0;
+  border: 2px solid var(--primary-color);
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+
+.avatar-button:hover {
+  transform: scale(1.1);
+}
+
+.avatar-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .profile-modal .modal-content {
+  background-color: var(--container-bg);
+  border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .profile-modal .form-group input {
+  background-color: var(--input-bg);
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+/* Make sure modal is hidden when needed */
+.profile-modal.hidden {
+  display: none !important;
 }

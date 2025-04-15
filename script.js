@@ -137,6 +137,58 @@ document.addEventListener("DOMContentLoaded", () => {
   );
   const additionalTime = document.getElementById("additional-time");
 
+  // --- Profile Elements ---
+  const profileElements = {
+    avatarBtn: document.getElementById("avatar-btn"),
+    closeProfileModalBtn: document.getElementById("close-profile-modal"),
+    avatarInput: document.getElementById("avatar-input"),
+    profileForm: document.getElementById("profile-form"),
+    deleteAccountBtn: document.getElementById("delete-account-btn"),
+    changeAvatarBtn: document.getElementById("change-avatar-btn"),
+    headerAvatar: document.getElementById("avatar-img"),
+    profileModal: document.getElementById("profile-modal"),
+  };
+
+  // Initialize profile event listeners
+  if (profileElements.avatarBtn) {
+    profileElements.avatarBtn.addEventListener("click", () => {
+      if (profileElements.profileModal) {
+        profileElements.profileModal.classList.remove("hidden");
+      }
+    });
+  }
+
+  if (profileElements.closeProfileModalBtn) {
+    profileElements.closeProfileModalBtn.addEventListener("click", () => {
+      if (profileElements.profileModal) {
+        profileElements.profileModal.classList.add("hidden");
+      }
+    });
+  }
+
+  if (profileElements.avatarInput) {
+    profileElements.avatarInput.addEventListener(
+      "change",
+      handleProfileImageChange
+    );
+  }
+
+  if (profileElements.profileForm) {
+    profileElements.profileForm.addEventListener("submit", handleProfileSubmit);
+  }
+
+  if (profileElements.deleteAccountBtn) {
+    profileElements.deleteAccountBtn.addEventListener("click", deleteAccount);
+  }
+
+  if (profileElements.changeAvatarBtn) {
+    profileElements.changeAvatarBtn.addEventListener("click", () => {
+      if (profileElements.avatarInput) {
+        profileElements.avatarInput.click();
+      }
+    });
+  }
+
   // --- State ---
   let currentUser = null;
   let recipes = [];
@@ -146,7 +198,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let existingImageBase64ForEdit = null;
   let shoppingListItems = [];
   let mealPlan = {};
-  let userData = { favorites: [], comments: {} };
+  let userData = { favorites: [], comments: {}, profile: {} };
   let allCategories = new Set();
   let allDietaryTypes = new Set([
     "Gluten-Free",
@@ -361,17 +413,34 @@ document.addEventListener("DOMContentLoaded", () => {
     const users = loadFromLocalStorage(USERS_STORAGE_KEY) || {};
     if (users[username] && users[username].password === password) {
       currentUser = username;
+      // Save current user to localStorage for persistence
+      localStorage.setItem("currentUser", username);
+
       userData = loadFromLocalStorage(
         `${USER_DATA_STORAGE_KEY}.${username}`
       ) || {
         favorites: [],
         comments: {},
+        profile: {},
       };
       authSection.classList.add("hidden");
       mainApp.style.display = "block";
       loadRecipes().then(() => displayRecipes());
       loadShoppingList();
       loadMealPlan();
+
+      // Update both profile and header avatars immediately
+      const headerAvatar = document.getElementById("avatar-img");
+      const profileAvatar = document.getElementById("profile-avatar");
+      if (userData.profile?.avatar) {
+        if (headerAvatar) headerAvatar.src = userData.profile.avatar;
+        if (profileAvatar) profileAvatar.src = userData.profile.avatar;
+      } else {
+        const defaultAvatar =
+          "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23808080' d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
+        if (headerAvatar) headerAvatar.src = defaultAvatar;
+        if (profileAvatar) profileAvatar.src = defaultAvatar;
+      }
     } else {
       showAuthError("Invalid username or password.");
     }
@@ -394,7 +463,7 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Failed to save recipes on logout:", e)
     );
     currentUser = null;
-    userData = { favorites: [], comments: {} };
+    userData = { favorites: [], comments: {}, profile: {} };
     recipes = [];
     shoppingListItems = [];
     mealPlan = {};
@@ -1239,6 +1308,158 @@ document.addEventListener("DOMContentLoaded", () => {
     }, "image/jpeg");
   }
 
+  // --- Profile Management Functions ---
+  function showProfileModal() {
+    const profileModal = document.getElementById("profile-modal");
+    const profileUsername = document.getElementById("profile-username");
+    const profileEmail = document.getElementById("profile-email");
+    const profileName = document.getElementById("profile-name");
+    const profileAvatar = document.getElementById("profile-avatar");
+    const headerAvatar = document.getElementById("avatar-img");
+
+    if (!currentUser) {
+      alert("Please log in to view your profile.");
+      return;
+    }
+
+    // Initialize userData.profile if it doesn't exist
+    userData.profile = userData.profile || {};
+
+    profileUsername.value = currentUser;
+    profileEmail.value = userData.profile?.email || "";
+    profileName.value = userData.profile?.name || "";
+
+    if (userData.profile?.avatar) {
+      profileAvatar.src = userData.profile.avatar;
+      headerAvatar.src = userData.profile.avatar;
+    } else {
+      // Set default avatar
+      const defaultAvatar =
+        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23808080' d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
+      profileAvatar.src = defaultAvatar;
+      headerAvatar.src = defaultAvatar;
+    }
+
+    profileModal.classList.remove("hidden");
+  }
+
+  async function handleProfileImageChange(event) {
+    if (!currentUser) {
+      alert("Please log in to update your profile.");
+      return;
+    }
+
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      alert("Profile image must be less than 5MB");
+      event.target.value = ""; // Clear the file input
+      return;
+    }
+
+    try {
+      const base64Image = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (e) => reject(e.error);
+        reader.readAsDataURL(file);
+      });
+
+      // Validate image by preloading it
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Invalid image file"));
+        img.src = base64Image;
+      });
+
+      // Update state and UI
+      userData.profile = userData.profile || {};
+      userData.profile.avatar = base64Image;
+
+      const profileAvatar = document.getElementById("profile-avatar");
+      const headerAvatar = document.getElementById("avatar-img");
+
+      if (profileAvatar) profileAvatar.src = base64Image;
+      if (headerAvatar) headerAvatar.src = base64Image;
+
+      // Save to localStorage
+      await saveToLocalStorage(
+        `${USER_DATA_STORAGE_KEY}.${currentUser}`,
+        userData
+      );
+      alert("Profile image updated successfully!");
+    } catch (error) {
+      console.error("Error processing profile image:", error);
+      alert("Failed to process profile image. Please try again.");
+    } finally {
+      event.target.value = ""; // Clear the file input
+    }
+  }
+
+  function handleProfileSubmit(event) {
+    event.preventDefault(); // Prevent form submission
+
+    if (!currentUser) {
+      alert("Please log in to update your profile.");
+      return;
+    }
+
+    const emailInput = document.getElementById("profile-email");
+    const nameInput = document.getElementById("profile-name");
+
+    if (!emailInput || !nameInput) {
+      console.error("Profile form elements not found");
+      return;
+    }
+
+    // Basic email validation
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(emailInput.value)) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+
+    userData.profile.email = emailInput.value;
+    userData.profile.name = nameInput.value;
+
+    try {
+      saveToLocalStorage(`${USER_DATA_STORAGE_KEY}.${currentUser}`, userData);
+      alert("Profile updated successfully!");
+      closeProfileModal();
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      alert("Failed to save profile changes. Please try again.");
+    }
+  }
+
+  function closeProfileModal() {
+    document.getElementById("profile-modal").classList.add("hidden");
+  }
+
+  function deleteAccount() {
+    if (
+      !confirm(
+        "Are you sure you want to delete your account? This action cannot be undone."
+      )
+    ) {
+      return;
+    }
+
+    const users = loadFromLocalStorage(USERS_STORAGE_KEY) || {};
+    delete users[currentUser];
+    saveToLocalStorage(USERS_STORAGE_KEY, users);
+
+    // Remove all user data
+    localStorage.removeItem(`${USER_DATA_STORAGE_KEY}.${currentUser}`);
+    localStorage.removeItem(`${SHOPPING_LIST_STORAGE_KEY}.${currentUser}`);
+    localStorage.removeItem(`${MEAL_PLAN_STORAGE_KEY}.${currentUser}`);
+
+    logout();
+    alert("Your account has been deleted.");
+  }
+
   // --- Event Listeners ---
   authForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -1610,6 +1831,58 @@ document.addEventListener("DOMContentLoaded", () => {
   clearShoppingListBtn.addEventListener("click", clearShoppingList);
   clearMealPlanBtn.addEventListener("click", clearMealPlan);
 
+  // Initialize Profile Management
+  function initializeProfileFunctionality() {
+    const profileElements = {
+      avatarBtn: document.getElementById("avatar-btn"),
+      closeProfileModalBtn: document.getElementById("close-profile-modal"),
+      avatarInput: document.getElementById("avatar-input"),
+      profileForm: document.getElementById("profile-form"),
+      deleteAccountBtn: document.getElementById("delete-account-btn"),
+      changeAvatarBtn: document.getElementById("change-avatar-btn"),
+      headerAvatar: document.getElementById("avatar-img"),
+    };
+
+    // Verify all elements exist
+    if (Object.values(profileElements).some((element) => !element)) {
+      console.error(
+        "Some profile elements were not found:",
+        Object.entries(profileElements)
+          .filter(([key, value]) => !value)
+          .map(([key]) => key)
+      );
+      return;
+    }
+
+    // Add event listeners
+    profileElements.avatarBtn.addEventListener("click", showProfileModal);
+    profileElements.closeProfileModalBtn.addEventListener(
+      "click",
+      closeProfileModal
+    );
+    profileElements.avatarInput.addEventListener(
+      "change",
+      handleProfileImageChange
+    );
+    profileElements.profileForm.addEventListener("submit", handleProfileSubmit);
+    profileElements.deleteAccountBtn.addEventListener("click", deleteAccount);
+    profileElements.changeAvatarBtn.addEventListener("click", () => {
+      profileElements.avatarInput.click();
+    });
+
+    // Override login function to handle avatar
+    const originalLogin = window.login;
+    window.login = (username, password) => {
+      originalLogin(username, password);
+      if (userData.profile?.avatar) {
+        profileElements.headerAvatar.src = userData.profile.avatar;
+      }
+    };
+  }
+
+  // Initialize profile functionality
+  initializeProfileFunctionality();
+
   // --- Initialization ---
   const savedTheme = loadFromLocalStorage(THEME_STORAGE_KEY) || "light";
   body.dataset.theme = savedTheme;
@@ -1638,5 +1911,33 @@ document.addEventListener("DOMContentLoaded", () => {
     authSection.classList.remove("hidden");
     mainApp.style.display = "none";
     usernameInput.focus();
+  }
+
+  // Load persisted user session if it exists
+  const savedUserData = localStorage.getItem("currentUser");
+  if (savedUserData) {
+    currentUser = savedUserData;
+    userData = loadFromLocalStorage(
+      `${USER_DATA_STORAGE_KEY}.${currentUser}`
+    ) || {
+      favorites: [],
+      comments: {},
+      profile: {},
+    };
+
+    // Update UI for logged in state
+    authSection.classList.add("hidden");
+    mainApp.style.display = "block";
+
+    // Load avatar if it exists
+    const headerAvatar = document.getElementById("avatar-img");
+    if (headerAvatar && userData.profile?.avatar) {
+      headerAvatar.src = userData.profile.avatar;
+    }
+
+    // Load other user data
+    loadRecipes().then(() => displayRecipes());
+    loadShoppingList();
+    loadMealPlan();
   }
 });
